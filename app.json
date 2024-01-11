@@ -1,0 +1,1 @@
+{"project":{"copyright":"Limer - Take bytes", "routes":{"single":{"app_icon":"images::app.png"}, "group":{}}, "description":"The magic wand for Limekit apps", "lua_require":"", "url":"", "author":"Omega Msiska", "email":"", "version":"1.0", "name":"Limer"}}
