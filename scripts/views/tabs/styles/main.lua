@@ -49,7 +49,7 @@ Tab::pane {
 }
 ]]
 
-appTabDarkStyle=[[
+appTabDarkStyle = [[
 /* Tab Widget */
 Tab {
     background: #2d2d2d;

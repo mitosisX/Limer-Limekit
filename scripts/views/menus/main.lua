@@ -1,4 +1,3 @@
-
 -- function that handles changing of themes
 function changeTheme(obj)
     theme_ = obj:getText() -- gets the text available on the button clicked
@@ -12,7 +11,7 @@ function changeTheme(obj)
         setUserProjectsListTheme()
 
         appTabsLightTheme()
-        
+
     elseif theme_ == 'Dark' then
         theme:setTheme('dark')
         obj:setText('Light')
@@ -27,77 +26,68 @@ function changeTheme(obj)
 end
 
 -- The menu items visible on the home screen
-appMenubarItems = {{
-    label = '&File', -- Accelerator for letter F
-    submenu = {{
-        name = 'create_project',
-        label = 'New Project',
-        icon = images('toolbar/new_project.png'),
-        shortcut = "Ctrl+N",
-        click = projectCreator
-    }, {
-        label = 'Open Project',
-        icon = images('toolbar/open_project.png'),
-        shortcut = "Ctrl+O",
-        click = projectOpener
-    }, {
-        label = '-'
-    },
+appMenubarItems = {
     {
-        label = 'Exit',
-        icon = images('exit.png'),
-        click = function()
-            app.exit()
-        end
-    }}
-}, {
-    label = '&View',
-    name = 'view',
-    submenu = {{
-        label = "Home Page",
-        click = returnHomePage,
-        shortcut = "Ctrl+H"
+        label = '&File', -- Accelerator for letter F
+        submenu = {
+            {
+                name = 'create_project',
+                label = 'New Project',
+                icon = images('toolbar/new_project.png'),
+                shortcut = "Ctrl+N",
+                click = projectCreator
+            }, {
+                label = 'Open Project',
+                icon = images('toolbar/open_project.png'),
+                shortcut = "Ctrl+O",
+                click = projectOpener
+            }, {label = '-'}, {
+                label = 'Exit',
+                icon = images('exit.png'),
+                click = function() app.exit() end
+            }
+        }
     }, {
-        label = "Application Log"
+        label = '&View',
+        name = 'view',
+        submenu = {
+            {label = "Home Page", click = returnHomePage, shortcut = "Ctrl+H"},
+            {label = "Application Log"}, {
+                label = "Theme",
+                submenu = {
+                    {
+                        name = 'light_theme',
+                        label = 'Dark',
+                        icon = images('app/dark.png'),
+                        click = changeTheme
+                    }
+                }
+            }
+        }
     }, {
-        label = "Theme",
-        submenu = {{
-            name = 'light_theme',
-            label = 'Dark',
-            icon = images('app/dark.png'),
-            click = changeTheme
-        }}
-    }}
-}, {
-    label = "&App",
-    submenu = {{
-        label = "Run",
-        shortcut = "Ctrl+R",
-        click = runApp
+        label = "&App",
+        submenu = {
+            {label = "Run", shortcut = "Ctrl+R", click = runApp}, {
+                label = "Stop",
+                shortcut = "Ctrl+X",
+                click = function(obj)
+                    if projectRunnerProcess then
+                        projectRunnerProcess:stop()
+                    end
+                end
+            }, {label = "-"}
+            -- {
+            --     label = "Build",
+            --     shortcut = 'Ctrl+B'
+            -- }
+        }
     }, {
-        label = "Stop",
-        shortcut = "Ctrl+X",
-        click = function(obj)
-            if projectRunnerProcess then
-                projectRunnerProcess:stop()
-            end
-        end
-    }, {
-        label = "-"
-    }, 
-    -- {
-    --     label = "Build",
-    --     shortcut = 'Ctrl+B'
-    -- }
+        label = "&Help",
+        submenu = {
+            --     {
+            --     label = 'Register'
+            -- }, 
+            {label = "About Limekit", click = aboutPage}
+        }
+    }
 }
-}, {
-    label = "&Help",
-    submenu = {
-    --     {
-    --     label = 'Register'
-    -- }, 
-    {
-        label = "About Limekit",
-        click = aboutPage
-    }}
-}}

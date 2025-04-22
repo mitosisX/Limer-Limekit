@@ -1,6 +1,4 @@
-local t = require('nest.tester')
-
-app.executeFile(scripts('views/dialogs/create_project.lua'))
+-- require 'views.dialogs.create_project'
 
 toolbar = Toolbar()
 toolbar:setIconStyle('textbesideicon')

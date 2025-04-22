@@ -11,41 +11,40 @@
 		Development Started: 10 November, 2023
 
 ]] --
-
 currentTheme = 'light'
 
 theme = app.Theme('darklight')
 theme:setTheme(currentTheme)
 
-json = require 'json' -- to handle every json in this app
+json = require 'json'         -- to handle every json in this app
 
-local APP_FONT_SIZE = 9.9		-- The app font size, for whatever reason, using 10 makes the window not fullscreen
-local APP_WINDOW_WIDTH = 1000	-- App window width
-local APP_WINDOW_HEIGHT = 400	-- App window height
+local APP_FONT_SIZE = 9.9     -- The app font size, for whatever reason, using 10 makes the window not fullscreen
+local APP_WINDOW_WIDTH = 1000 -- App window width
+local APP_WINDOW_HEIGHT = 400 -- App window height
 
 -- System related
-projectRunnerProcess  = None -- The process handling the execution of user program
+projectRunnerProcess = None -- The process handling the execution of user program
 
 -- User files and folders
-documentsFolder		  = app.getStandardPath('documents') -- locate 'My Documents' folder (system independent)
+documentsFolder = app.getStandardPath('documents')                         -- locate 'My Documents' folder (system independent)
 limekitProjectsFolder = app.joinPaths(documentsFolder, 'limekit projects') -- dir for writing any limekit projects
 
 -- Code Injection
-codeInjectionFolder   = app.joinPaths(limekitProjectsFolder, '.limekit') -- The dir for code inejction
-codeInjectionFile     = app.joinPaths(codeInjectionFolder, '_code.lua')	 -- The file for code injection
+codeInjectionFolder = app.joinPaths(limekitProjectsFolder, '.limekit') -- The dir for code inejction
+codeInjectionFile = app.joinPaths(codeInjectionFolder, '_code.lua')    -- The file for code injection
 
-userProjectJSON 	  = None    		-- The app.json for each projects
-userProjectFolder     = ""    			-- The folder for the current project
-requirePathFile       = ""      		-- Path to the .require file
-allRequirePathsTable  = {} 				-- All paths obtained from the .require file
-projectIsRunning 	  = false         	-- whether or not the app is running
+userProjectJSON = None                                                 -- The app.json for each projects
+userProjectFolder = ""                                                 -- The folder for the current project
+requirePathFile = ""                                                   -- Path to the .require file
+allRequirePathsTable = {}                                              -- All paths obtained from the .require file
+projectIsRunning = false                                               -- whether or not the app is running
 
-scriptsFolder = ""
-imagesFolder = ""
-miscFolder = ""
+userScriptsFolder = ""
+useImagesFolder = ""
+userMiscFolder = ""
 --- END: User files and folders
---- 
---- 
+---
+---
 
 -- Create the user projects folder if it doesn't exist yet
 if not app.exists(limekitProjectsFolder) then
@@ -64,22 +63,20 @@ limekitWindow:setOnShown(function()
 	fetchAllProjectsForUser() -- Fetch all projects for the user
 end)
 
--- Load styles
-app.executeFile(scripts('views/tabs/styles/main.lua'))
 
-app.executeFile(scripts('common/styles/main.lua'))
-app.executeFile(scripts('common/utils/main.lua'))
-app.executeFile(scripts('views/homepage/welcome.lua'))
-app.executeFile(scripts('views/menus/main.lua'))
-app.executeFile(scripts('views/toolbar/main.lua'))
-app.executeFile(scripts('views/tabs/main.lua'))
-app.executeFile(scripts('views/docks/main.lua'))
-
+require 'views.tabs.styles.main'
+require 'common.styles.main'
+require 'common.utils.main'
+require 'views.homepage.welcome'
+require 'views.menus.main'
+require 'views.toolbar.main'
+require 'views.tabs.main'
+require 'views.docks.main'
 
 -- app.setFontFile(misc('fonts/Comfortaa-Regular.ttf'), APP_FONT_SIZE)
 app.setFontSize(APP_FONT_SIZE)
 
-mainLay = VLayout() -- The master layout for the whole app
+mainLay = VLayout()  -- The master layout for the whole app
 
 consoCodeTab = Tab() -- The Tab holding the console and code injection tabs
 
@@ -87,7 +84,7 @@ consoCodeTab = Tab() -- The Tab holding the console and code injection tabs
 consoleLogTab = Container()
 consoLay = VLayout()
 
-logConsole = TextField() -- The application's console log
+logConsole = TextField()     -- The application's console log
 logConsole:setReadOnly(true) -- console shouldn't be edited
 consoLay:addChild(logConsole)
 consoleLogTab:setLayout(consoLay)
@@ -106,9 +103,7 @@ codeInjHLay:setContentAlignment('left')
 runInjectionCodeButton = Button('Run')
 runInjectionCodeButton:setEnabled(false)
 runInjectionCodeButton:setOnClick(function()
-	if not projectIsRunning then
-
-	end
+	if not projectIsRunning then end
 
 	local injectionCodeContent = codeInjectionField:getText()
 
@@ -117,17 +112,18 @@ runInjectionCodeButton:setOnClick(function()
 		-- logConsole:appendText(result) -- append the result to the console log
 		app.writeFile(codeInjectionFile, injectionCodeContent)
 	else
-		app.criticalAlertDialog(limekitWindow, 'Error!',"You'll need to write some code first...")
+		app.criticalAlertDialog(limekitWindow, 'Error!',
+			"You'll need to write some code first...")
 	end
 end)
-runInjectionCodeButton:setResizeRule('fixed','fixed')
+runInjectionCodeButton:setResizeRule('fixed', 'fixed')
 
 resetCodeInjectionFieldButton = Button('Clear')
 resetCodeInjectionFieldButton:setOnClick(function(sender)
 	codeInjectionField:clear()
 	print(projectIsRunning and 'Yes' or 'No')
 end)
-resetCodeInjectionFieldButton:setResizeRule('fixed','fixed')
+resetCodeInjectionFieldButton:setResizeRule('fixed', 'fixed')
 
 codeInjHLay:addChild(runInjectionCodeButton)
 codeInjHLay:addChild(resetCodeInjectionFieldButton)
@@ -146,7 +142,8 @@ codeInjectionField = TextField() -- Where injection code will be retrieved
 -- 	end
 -- end)
 codeInjectionField:setHint('Enter injection code here...')
-codeInjectionField:setToolTip("Code entered here will be used to alter your running program")
+codeInjectionField:setToolTip(
+	"Code entered here will be used to alter your running program")
 codeInjectionField:setOnTextChange(function(sender, text)
 	if string.len(text) > 1 and projectIsRunning then
 		runInjectionCodeButton:setEnabled(true)
@@ -181,9 +178,9 @@ homeStackedWidget:setAnimation('OutExpo')
 -- homeStackedWidget.autoStart() -- should comment out this one
 
 homeStackedWidget:addLayout(welcomeView)
-homeStackedWidget:addChild(allAppTabs) -- The Tab holding App, Assets, Properties..
+homeStackedWidget:addChild(allAppTabs)         -- The Tab holding App, Assets, Properties..
 
-homescreenSplitter:addChild(homeStackedWidget)        -- home page - from components
+homescreenSplitter:addChild(homeStackedWidget) -- home page - from components
 homescreenSplitter:addChild(consoCodeTab)
 
 limekitWindow:setMainChild(homescreenSplitter)

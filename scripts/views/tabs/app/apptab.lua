@@ -1,6 +1,5 @@
 -- Hold the UI for displaying user project properties; project name, version, etc...
 -- Editing/modification of user project is also carried out here
-
 appTabMainLay = VLayout()
 appTabMainLay:setContentAlignment('vcenter', 'center')
 
@@ -11,11 +10,11 @@ DropShadow(appTabGroup)
 appTabGroup:setMinWidth(500)
 appTabGroup:setMaxWidth(500)
 
-appContentLay = VLayout() -- This is where everything inside the GroupBox will reside
+appContentLay = VLayout()    -- This is where everything inside the GroupBox will reside
 
 appDetailsGroup = GroupBox() -- Holds the layout that holds the icon, run button, location
 
-appDetailsLay = HLayout() -- The above mentioned layout
+appDetailsLay = HLayout()    -- The above mentioned layout
 
 loadedAppIcon = Image(images('app/image.png'))
 loadedAppIcon:setResizeRule('fixed', 'fixed')
@@ -27,7 +26,8 @@ appDetailsLay2:setContentAlignment('bottom')
 loadedAppName = Label("App:")
 
 appDetailsLay2:addChild(loadedAppName)
-appDetailsLay2:addChild(Label(string.format('Your OS: <strong>%s</strong>', app.getOSName())))
+appDetailsLay2:addChild(Label(string.format('Your OS: <strong>%s</strong>',
+    app.getOSName())))
 
 runAppButton = Button('Run')
 runAppButton:setResizeRule('fixed', 'fixed')
@@ -39,7 +39,7 @@ runProgress = ProgressBar()
 runProgress:setRange(0, 0)
 runProgress:setMaxHeight(5)
 -- runProgress:setMaxWidth(20)
-runProgress:setResizeRule('maximum','maximum')
+runProgress:setResizeRule('maximum', 'maximum')
 runProgress:setVisibility(false)
 
 appDetailsLay2:addChild(runAppButton)
@@ -93,9 +93,10 @@ editAppButtonLay = HLayout()
 editAppButtonLay:addStretch()
 
 saveEditButton = Button('Save')
-saveEditButton:setIcon(images('homepage/create_project/done2.png'))
+saveEditButton:setIcon(images('editor/normal.png'))
 saveEditButton:setOnClick(function()
-    askToSave = app.questionAlertDialog(limekitWindow, 'Confirm', 'Are you sure you want to save the modification?')
+    askToSave = app.questionAlertDialog(limekitWindow, 'Confirm',
+        'Are you sure you want to save the modification?')
 
     if askToSave then
         newAppName = editAppName:getText()
@@ -107,12 +108,13 @@ saveEditButton:setOnClick(function()
         userProjectJSON.project.description = editAppDescription:getText()
         userProjectJSON.project.email = editAppEmail:getText()
 
-        app.writeFile(app.joinPaths(userProjectFolder, 'app.json'), json.stringify(userProjectJSON))
+        app.writeFile(app.joinPaths(userProjectFolder, 'app.json'),
+            json.stringify(userProjectJSON))
 
-        loadedAppName:setText(string.format('App: <strong>%s</strong> ', newAppName))
+        loadedAppName:setText(string.format('App: <strong>%s</strong> ',
+            newAppName))
 
         writeToConsole('project updated successfuly')
-
     else
         writeToConsole('Not saving')
     end

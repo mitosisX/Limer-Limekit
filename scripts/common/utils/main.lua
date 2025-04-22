@@ -1,41 +1,28 @@
 -- Miscellaneous functions used throughout the app
-
 -- User shouldn't inject code when the app is not running
-function disableCodeInjectionRunButton()
-    runInjectionCodeButton:setEnabled(false)
-end
+function disableCodeInjectionRunButton() runInjectionCodeButton:setEnabled(false) end
 
 -- Functions to be invoked once the app has been closed
-function appCloseCallBack()
-    disableCodeInjectionRunButton()
-end
+function appCloseCallBack() disableCodeInjectionRunButton() end
 
 local function starts_with(str, prefix)
     return string.sub(str, 1, #prefix) == prefix
 end
 
-function appTabsLightTheme()
-    allAppTabs:setStyle(appTabLightStyle)
-end
+function appTabsLightTheme() allAppTabs:setStyle(appTabLightStyle) end
 
-function appTabsDarkTheme()
-    allAppTabs:setStyle(appTabDarkStyle)
-end
+function appTabsDarkTheme() allAppTabs:setStyle(appTabDarkStyle) end
 
 -- Hold other xecute when switched to dark mode
-function darkModeCallBack()
-    appTabsDarkTheme()
-end
+function darkModeCallBack() appTabsDarkTheme() end
 
-function lightModeCallBack()
-    appTabsLightTheme()
-end
+function lightModeCallBack() appTabsLightTheme() end
 
 -- loads all the user projects and displays them for easy access
 function fetchAllProjectsForUser()
     local projectList = app.listFolder(limekitProjectsFolder)
     local foldersOnly = {}
-    
+
     for _, item in ipairs(projectList) do
         local fullPath = app.joinPaths(limekitProjectsFolder, item)
 
@@ -50,13 +37,13 @@ end
 
 -- Basically, just sets the userprojects listbox theme
 function setUserProjectsListTheme()
-    userProjectsList:setStyle(currentTheme == 'light' and userProjectsLightStyle or userProjectsDarkStyle)
+    userProjectsList:setStyle(
+        currentTheme == 'light' and userProjectsLightStyle or
+        userProjectsDarkStyle)
 end
 
 -- The funtion that writes to the console in the app
-function writeToConsole(content)
-    logConsole:appendText('>> ' .. content)
-end
+function writeToConsole(content) logConsole:appendText('>> ' .. content) end
 
 function createTreeItem(name, icon)
     item = TreeViewItem(name)
@@ -77,17 +64,17 @@ function showUserProjectDir(treeView, path)
 
     for _, entry in ipairs(app.listFolder(path)) do
         local full_path = app.joinPaths(path, entry)
-        --print(full_path)
+        -- print(full_path)
 
         -- folder_icon = ""
 
         if app.isFolder(full_path) then
             -- table.insert(folders, {folder_icon, entry, full_path})
-            table.insert(folders, {entry, full_path})
+            table.insert(folders, { entry, full_path })
         else
             -- table.insert(files, {file_icon, entry, full_path})
-            table.insert(files, {entry, full_path})
-            --print(entry)
+            table.insert(files, { entry, full_path })
+            -- print(entry)
         end
     end
 
@@ -96,20 +83,23 @@ function showUserProjectDir(treeView, path)
         local folder_name = entry[1]
         local folder_path = entry[2]
 
-        local item = createTreeItem( folder_name,limekitWindow:getStandardIcon('SP_DirIcon'))
+        local item = createTreeItem(folder_name,
+            limekitWindow:getStandardIcon('SP_DirIcon'))
 
         treeView:addRow(item)
         showUserProjectDir(item, folder_path)
         -- print('FOLDER>>>> ',folder_path)
     end
 
-    for _,  entry in ipairs(files) do
+    for _, entry in ipairs(files) do
         -- item = TreeViewItem(entry[1])
         local file_name = entry[1]
         local file_path = entry[2]
 
-        local item = createTreeItem(file_name, limekitWindow:getStandardIcon('SP_FileIcon'))
-        local item2 = createTreeItem(file_name, limekitWindow:getStandardIcon('SP_FileIcon'))
+        local item = createTreeItem(file_name, limekitWindow:getStandardIcon(
+            'SP_FileIcon'))
+        local item2 = createTreeItem(file_name, limekitWindow:getStandardIcon(
+            'SP_FileIcon'))
 
         treeView:addRow(item)
 
@@ -118,18 +108,12 @@ function showUserProjectDir(treeView, path)
 end
 
 -- Clears the console text area
-function clearConsole()
-    logConsole:setText("")
-end
+function clearConsole() logConsole:setText("") end
 
 -- This function is called to return to the home page from the app's page
-function returnHomePage()
-    homeStackedWidget:slidePrev()
-end
+function returnHomePage() homeStackedWidget:slidePrev() end
 
-function returnToMyProject()
-    homeStackedWidget:slideNext()
-end
+function returnToMyProject() homeStackedWidget:slideNext() end
 
 -- Modal for project creation
 -- This is the modal that pops up when the user clicks on 'New Project'
@@ -195,7 +179,7 @@ function projectCreator()
 
     createHeader = Label('Create your project')
     createHeader:setBold(true)
-    createHeader:setTextAlign('center')
+    createHeader:setTextAlignment('center')
     createHeader:setTextSize(10)
 
     createName = Label('Name')
@@ -215,12 +199,12 @@ function projectCreator()
     createIconImage:setImage(images('homepage/create_project/pick_image.png'))
     createIconImage:setCursor('pointinghand')
     createIconImage:setOnClick(function(obj)
-        selIcon = app.openFileDialog(limekitWindow, "Pick and image for the app", "", {
-            ["App Icon"] = {".png"}
-        })
+        selIcon = app.openFileDialog(limekitWindow,
+            "Pick and image for the app", "",
+            { ["App Icon"] = { ".png" } })
 
-        if selIcon ~= "" then
-            selIconPath = selIcon
+        if selIcon ~= nil then
+            selIconPath = app.normalPath(selIcon)
 
             -- set the image picked and do some resize
             if selIconPath then
@@ -231,7 +215,7 @@ function projectCreator()
     end)
 
     createButton = Button('Create')
-    createButton:setIcon(images('homepage/create_project/done.png'))
+    createButton:setIcon(images('homepage/create_project/done_white.png'))
     createButton:setOnClick(processProjectCreation)
 
     -- Now, display everything all together
@@ -261,16 +245,16 @@ end
 -- This is where the app.json file is read and the project folder is set
 -- Execution when loading a project
 function initProject(projectFile)
-    homeStackedWidget:slideNext() -- switch from home page to app's page
+    homeStackedWidget:slideNext()                   -- switch from home page to app's page
 
-    userProjectFolder = string.match(file, '.*/') -- This gets the folder for the selected project
+    userProjectFolder = app.getDirName(projectFile) -- This gets the folder for the selected project
     readPackagePaths()
 
     userProjectJSON = json.parse(app.readFile(projectFile)) -- the app.json
 
-    scriptsFolder = app.joinPaths(userProjectFolder, 'scripts')
-    imagesFolder = app.joinPaths(userProjectFolder, 'images')
-    miscFolder = app.joinPaths(userProjectFolder, 'misc')
+    userScriptsFolder = app.joinPaths(userProjectFolder, 'scripts')
+    useImagesFolder = app.joinPaths(userProjectFolder, 'images')
+    userMiscFolder = app.joinPaths(userProjectFolder, 'misc')
 
     local appName = userProjectJSON.project.name
 
@@ -283,49 +267,45 @@ function initProject(projectFile)
     editAppDescription:setText(userProjectJSON.project.description)
     editAppEmail:setText(userProjectJSON.project.email)
 
-    local limekitWindowIcon = app.joinPaths(imagesFolder, 'app.png')
+    local limekitWindowIcon = app.joinPaths(useImagesFolder, 'app.png')
 
     loadedAppIcon:setImage(limekitWindowIcon)
     loadedAppIcon:resizeImage(50, 50) -- maintain our initial 50x50 size when switching between user app images
 end
 
 function finalizeProjectOpening(file)
-    if file ~= nil then
-        initProject(file)
+    initProject(file)
 
-        writeToConsole(file)
+    projName = userProjectJSON.project.name -- The name of the project
 
-        projName = userProjectJSON.project.name -- The name of the project
-        
-        theRecentProject = MenuItem(projName)
-        theRecentProject:setOnClick(function()
-            initProject(app.joinPaths(userProjectFolder, 'app.json'))
-        end)
+    theRecentProject = MenuItem(projName)
+    theRecentProject:setOnClick(function()
+        initProject(app.joinPaths(userProjectFolder, 'app.json'))
+    end)
 
-        switchToProjectToolbarButton:setEnabled(true)
+    switchToProjectToolbarButton:setEnabled(true)
 
-        appProjectDirTree:clear()
+    appProjectDirTree:clear()
 
-        showUserProjectDir(appProjectDirTree, userProjectFolder)
-        -- theRecentProject:setIcon(limekitWindowIcon)
+    showUserProjectDir(appProjectDirTree, userProjectFolder)
+    -- theRecentProject:setIcon(limekitWindowIcon)
 
-        recentProjectsMenu:addMenuItem(theRecentProject)
-        recentProjectsMenu:setOnClick(function()
-            -- app.warningAlertDialog(limekitWindow, 'Not complete', projName)
-        end)
-
-    end
+    recentProjectsMenu:addMenuItem(theRecentProject)
+    recentProjectsMenu:setOnClick(function()
+        -- app.warningAlertDialog(limekitWindow, 'Not complete', projName)
+    end)
 end
 
 -- This function is called when the user clicks on the 'Open Project' button
 function projectOpener()
-    file = app.openFileDialog(limekitWindow, "Open a project", limekitProjectsFolder, {
-        ["Limekit app"] = {".json"}
-    })
-    
-    finalizeProjectOpening(file)
-end
+    local file = app.openFileDialog(limekitWindow, "Open a project",
+        limekitProjectsFolder,
+        { ["Limekit app"] = { ".json" } })
 
+    if file ~= nil then
+        finalizeProjectOpening(app.normalPath(file))
+    end
+end
 
 -- 24 November, 2023 (12:29 PM)
 -- This is where all the magic happens ;-)
@@ -375,7 +355,6 @@ function runProject()
         codeEditorRunProgress:setVisibility(false)
 
         appCloseCallBack() -- all functions to be invoked
-
     end)
 
     -- Start the process to run the project
@@ -403,7 +382,6 @@ function packagePathsWriter()
     local concatPaths = table.concat(allRequirePathsTable, '\n')
 
     app.writeFile(requirePathFile, concatPaths)
-
 end
 
 -- This function is called to start or stop the app
@@ -431,7 +409,9 @@ function aboutPage()
 
     theGroupLay = HLayout()
 
-    gi = GifPlayer(images(app.randomChoice({'homepage/sheep.gif', 'homepage/cat.gif'})))
+    gi = GifPlayer(images(app.randomChoice({
+        'homepage/sheep.gif', 'homepage/cat.gif'
+    })))
     gi:setSize(120, 120)
     gi:setResizeRule('fixed', 'fixed')
     gi:setMargins(90, 0, 0, 0)

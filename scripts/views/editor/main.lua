@@ -1,269 +1,332 @@
-
 currentTabIndex = 1
 stateLogic = {}
 
+-- returns the current tab editor in use
+function getCurrentTabEditor()
+    local child = codeEditorMainTab:getChildAt(
+        codeEditorMainTab:getCurrentIndex())
+
+    return child
+end
+
 function handleTabClose()
-	local item = stateLogic[currentTabIndex]
+    local editor = getCurrentTabEditor()
 
-    print(codeEditorMainTab:getCurrentIndex())
+    local mainFilePath = app.joinPaths(userScriptsFolder, 'main.lua')
 
-	-- if item.editor:isModified() == true then
-	-- 	local tabText = codeEditorMainTab:getTabText(currentTabIndex)
-	-- 	local reply = app.questionAlertDialog(limekitWindow, 'Unsaved Changes',string.format('Do you want to save changes to %s?', tabText))
+    if editor:isModified() then
+        local item = stateLogic[editor]
 
-	-- 	if reply then
-	-- 		print('Pressed Yes')
-	-- 	else
-	-- 		print('Pressed No')
-	-- 	end
+        if item.filePath == nil then
+            local tabText = codeEditorMainTab:getTabText(currentTabIndex)
+            local reply = app.questionAlertDialog(limekitWindow,
+                'Unsaved Changes',
+                string.format(
+                    'Do you want to save changes to %s?',
+                    tabText)
+            -- { 'Save', 'Discard', 'Cancel' }
+            )
 
-	-- 	codeEditorMainTab:removeTab(currentTabIndex)
-	-- end
+            if reply then
+                saveFileContent(item.filePath, editor:getText())
 
+                editor:setModified(false)
+                showSavedIcon()
+            elseif reply == nil then
+                print('X pressed')
+            end
+        else
+            saveFileContent(item.filePath, editor:getText())
+
+            editor:setModified(false)
+            showSavedIcon()
+        end
+    end
+
+    -- By all means, never close the main file in the root folder of user project
+    if mainFilePath == stateLogic[editor].filePath then
+        writeToConsole('You cannot close the main.lua file')
+        return
+    end
+
+    codeEditorMainTab:removeTab(currentTabIndex)
 end
 
 -- Sets content from file to the editor
-function setTabContent(content)
-	stateLogic[currentTabIndex].editor:setText(content)
-end
+function setTabContent(content) getCurrentTabEditor():setText(content) end
 
 -- Deals with reading the file and populating content in editor
 function loadFileContent(path)
-	local fileContent = app.readFile(path)
+    local fileContent = app.readFile(path)
 
-	stateLogic[currentTabIndex].hasUnsavedChanges = false
-	setTabContent(fileContent)
+    setTabContent(fileContent)
 end
 
 -- Only called from menu or shortcut (Ctrl+O)
 function openFile()
-	local fileName = app.openFileDialog(window, 'Open File','F:\\research area\\side6\\side6 api\\watch',{['lua files']={'.lua'}})
-	
-	if fileName ~= nil then
-		fileOpener(fileName)		
-	end
+    local fileName = app.openFileDialog(limekitWindow, 'Open File',
+        'F:\\research area\\side6\\side6 api\\watch',
+        { ['lua files'] = { '.lua' } })
+
+    if fileName ~= nil then fileOpener(app.normalPath(fileName)) end
 end
 
 -- Can be called from anywhere to open a file
 function fileOpener(path)
-	-- Let's check if the particular is already open in the editor
-	for i, item in ipairs(stateLogic) do
-		if item.filePath ~= nil then
-			-- Check if the file's path equals to that being opened
-			if item.filePath == path then
+    local index = 1
+    -- Let's check if the particular is already open in the editor
+    for editor, item in pairs(stateLogic) do
+        -- Check if the file's path equals to that being opened
+        if item.filePath ~= nil and item.filePath == path then
+            codeEditorMainTab:setCurrentChild(editor)
+            return
+        end
 
-				codeEditorMainTab:setCurrentIndex(i)
-				return
-			end
-		end
-	end
+        -- index = index + 1
+    end
 
-	local editor, index, _path = addNewTab(app.getFileName(path), '', path)
+    local editor, _path = addNewTab(app.getFileName(path), '', path)
 
-	setState(index, editor, _path)
+    setState(editor, _path)
 
-	loadFileContent(path)
+    loadFileContent(path)
 end
 
 -- Sets the current tab index, for tracking tabs
-function setTabIndex(index)
-	currentTabIndex = index
-end
+function setTabIndex(index) currentTabIndex = index end
 
 -- Switches icon from red to blue
 function showSavedIcon()
-	codeEditorMainTab:setTabIcon(currentTabIndex, images('editor/normal.png'))
+    codeEditorMainTab:setTabIcon(currentTabIndex, images('editor/normal.png'))
 end
 
 function showUnsavedIcon()
-	codeEditorMainTab:setTabIcon(currentTabIndex, images('editor/modified.png'))
+    codeEditorMainTab:setTabIcon(currentTabIndex, images('editor/modified.png'))
 end
 
+function saveFileContent(fileName, content) app.writeFile(fileName, content) end
+
 function setTabFileName(index, name)
-	stateLogic[currentTabIndex].filePath = name
+    local editor = getCurrentTabEditor()
+    stateLogic[editor].filePath = name
+    codeEditorMainTab:setTabText(index, name)
 end
 
 -- Handles all the saving file logic
 function saveFile()
-	local item = stateLogic[currentTabIndex]
+    local editor = getCurrentTabEditor()
+    local item = stateLogic[editor]
 
-	if not item.filePath then
+    if item.filePath == nil then
+        local savedName = app.saveFileDialog(window, 'Save your file', '',
+            { ['lua file'] = { '.lua' } })
 
-		local savedName = app.saveFileDialog(window, 'Save your file', '',
-			{['lua file'] = {'.lua'}})
+        if savedName ~= nil then
+            saveFileContent(savedName, editor:getText())
 
+            local fileName = app.getFileName(savedName)
 
-		if savedName ~= nil then
-			app.writeFile(savedName, item.editor:getText())
+            setTabFileName(currentTabIndex, fileName)
 
-			local fileName = app.getFileName(savedName)
+            codeEditorMainTab:setTabText(currentTabIndex, fileName)
+            editor:setModified(false)
 
-			setTabFileName(currentTabIndex, fileName)
+            showSavedIcon()
+        end
+    else
+        local savePath = item.filePath
+        local saveContent = editor:getText()
 
-			codeEditorMainTab:setTabText(currentTabIndex, fileName)
-			item.editor:setModified(false)
+        print('#### ', saveContent)
 
-			showSavedIcon()
-		end
-	else
-		local savePath = stateLogic[currentTabIndex].filePath
-		local saveContent = item.editor:getText()
+        app.writeFile(savePath, saveContent)
+        editor:setModified(false)
 
-		app.writeFile(savePath, saveContent)
-		item.editor:setModified(false)
-		item.hasUnsavedChanges = false	
-
-		showSavedIcon()
-	end
+        showSavedIcon()
+    end
 end
 
 function createMenu()
-	menuStruct = 
-	{
-    {
-        label = '&File', -- Accelerator for letter F
-        submenu = {
-            {
-                name = 'new',
-                label = 'New',
-                -- icon = images('toolbar/new_project.png'),
-                shortcut = "Ctrl+N",
-                click = newFile
-            }, 
-            {
+    menuStruct = {
+        {
+            label = '&File', -- Accelerator for letter F
+            submenu = {
+                {
+                    name = 'new',
+                    label = 'New',
+                    -- icon = images('toolbar/new_project.png'),
+                    shortcut = "Ctrl+N",
+                    click = newFile
+                }, {
                 name = 'open',
                 label = 'Open',
                 -- icon = images('toolbar/open_project.png'),
                 shortcut = "Ctrl+O",
                 click = openFile
-            },
-            {
+            }, {
                 name = 'save',
                 label = 'Save',
                 shortcut = 'Ctrl+S',
                 -- icon = images('exit.png'),
                 click = saveFile
-            },
-            {
+            }, {
                 name = 'close_tab',
-                label = 'Close Tab',
+                label = 'Close Tab'
                 -- icon = images('exit.png'),
                 -- click = function()
                 --     app.exit()
                 -- end
-            },
-            {
+            }, {
                 name = 'exit',
                 label = 'Exit',
                 -- icon = images('exit.png'),
-                click = function()
-                    app.exit()
-                end
+                click = function() app.exit() end
             }
-        }
-    }, 
-    {
+            }
+        }, {
         label = '&Edit',
         name = 'edit_menu',
         submenu = {
             {
                 name = 'undo',
-                label = "Undo",
+                label = "Undo"
                 -- click = returnHomePage,
                 -- shortcut = "Ctrl+H"
-            }, 
-            {
-                name = 'redo',
-                label = "Redo",
-                -- click = showAppLog -- Added missing click handler
-            }, 
-            {
-                label = "-",
-            }, 
-            {
-                name = 'cut',
-                label = "Cut",
-            }, 
-            {
-                name = 'copy',
-                label = "Copy",
-            }, 
-            {
-                name = 'Paste',
-                label = "Paste",
-            },
+            }, {
+            name = 'redo',
+            label = "Redo"
+            -- click = showAppLog -- Added missing click handler
+        }, { label = "-" }, { name = 'cut', label = "Cut" },
+            { name = 'copy',  label = "Copy" },
+            { name = 'Paste', label = "Paste" }
         }
-    }}
+    }
+    }
 
-	menubar= Menubar()
-	menubar:buildFromTemplate(menuStruct)
-	window:setMenubar(menubar)
+    menubar = Menubar()
+    menubar:buildFromTemplate(menuStruct)
+    window:setMenubar(menubar)
 end
 
 function updateTabIcon(editor)
-	local index = codeEditorMainTab:getIndexOf(editor)
+    local index = codeEditorMainTab:getIndexOf(editor)
 
-	if index >= 1 then
-		-- Check if the document content have indeed been modified
-		if editor:isModified() then
-			showUnsavedIcon()
-		else
-			showSavedIcon()
-		end
-	end
+    if index >= 1 then
+        -- Check if the document content have indeed been modified
+        if editor:isModified() then
+            showUnsavedIcon()
+        else
+            showSavedIcon()
+        end
+    end
 end
 
 function handleContentChange(s, position, chars_removed, chars_added)
-	-- Handle actual content change
-	if chars_removed > 0 or chars_added > 0 then
-		stateLogic[currentTabIndex].hasUnsavedChanges = true
-		-- print('###### Qt thinks really changed')
+    -- Handle actual content change
+    if chars_removed > 0 or chars_added > 0 then
+        stateLogic[currentTabIndex].hasUnsavedChanges = true
+        -- print('###### Qt thinks really changed')
     end
+end
+
+function addSyntaxHighlight(editor)
+    highlightingRules = {}
+    keywords = {
+        "and", "break", "do", "else", "elseif", "end", "false", "for",
+        "function", "if", "in", "local", "nil", "not", "or", "repeat",
+        "return", "then", "true", "until", "while", "goto"
+
+    }
+
+    keyword_format = TextFormat()
+    keyword_format:setForegroundColor(0, 0, 255) --blue
+    keyword_format:setFontWeight('bold')
+
+    for _, keyword in pairs(keywords) do
+        pattern = "\\b" .. keyword .. "\\b"
+        table.insert(highlightingRules, { RegularExpression(pattern), keyword_format })
+    end
+
+    string_format = TextFormat()
+    string_format.setForegroundColor(163, 21, 21) -- Red
+
+    table.insert(highlightingRules, { RegularExpression('\\".*?\"'), string_format })
+    table.insert(highlightingRules, { RegularExpression('\'.*?\''), string_format })
+
+
+    comment_format = TextFormat()
+    comment_format:setForegroundColor(0, 128, 0) -- green
+
+    table.insert(highlightingRules, { RegularExpression('--.*'), comment_format })
+    table.insert(highlightingRules, { RegularExpression("--\\[\\[.*?\\]\\]"), comment_format })
+
+    number_format = TextFormat()
+    number_format:setForegroundColor(128, 0, 128) -- Purple
+    table.insert(highlightingRules, { RegularExpression('\'.*?\''), number_format })
+
+    function_format = TextFormat()
+    function_format:setForegroundColor(42, 0, 255) -- Darker blue
+    function_format:setFontWeight('bold')
+    table.insert(highlightingRules, { RegularExpression('\\b[A-Za-z0-9_]+(?=\\()'), function_format })
+
+
+    editorSyntaxHighliter = SyntaxHighlighter(editor)
+    editorSyntaxHighliter:setOnHighlighBlock(function(sender, text)
+        for _, rules in ipairs(highlightingRules) do
+            local pattern, format = rules[1], rules[2]
+
+            -- The following code is a workaround, the code still uses python syntax
+            -- but the regex is Lua. The regex engine is not the same as Python's.
+
+            local match_iterator = pattern.globalMatch(text)
+
+            while match_iterator.hasNext() do
+                local match = match_iterator.next()
+                sender:setFormat(match.capturedStart(),
+                    match.capturedLength(), format)
+            end
+        end
+    end)
 end
 
 -- Handles creation of a new tab
 function addNewTab(title, content, path)
+    local editor = TextField()
+    editor:setTextSize(12)
 
-	local editor = TextField()
-	-- editor:setWrapMode('nowrap')
-	editor:setPlainText(content)
-	editor:setModified(false)
+    addSyntaxHighlight(editor)
 
-	-- editor:setOnKeyPress(function(s, event)
-	-- end)
+    -- editor:setWrapMode('nowrap')
+    editor:setPlainText(content)
 
-	editor:setOnModificationChanged(function()
-		updateTabIcon(editor)
-	end)
+    editor:setModified(false)
 
-	index = codeEditorMainTab:addTab(editor, title, images('editor/normal.png'))
-	codeEditorMainTab:setCurrentIndex(index)
-	editor:setFocus()
+    -- editor:setOnKeyPress(function(s, event)
+    -- end)
 
-	return editor, index, path
+    editor:setOnModificationChanged(function() updateTabIcon(editor) end)
+
+    index = codeEditorMainTab:addTab(editor, title, images('editor/normal.png'))
+    codeEditorMainTab:setCurrentIndex(index)
+    editor:setFocus()
+
+    return editor, path
 end
 
 -- Appends to the logic state
-function setState(index, editor, filePath)
-	stateLogic[index] = {
-		editor = editor,
-		filePath = filePath
-	}
-end
+function setState(editor, filePath) stateLogic[editor] = { filePath = filePath } end
 
 function newFile()
-	local editor, index, path = addNewTab('Untitled', '', nil)
+    local editor, path = addNewTab('Untitled', '', nil)
 
-	setState(index, editor, path)
+    setState(editor, path)
 end
 
-codeEditorTabMainLay  = VLayout()
+codeEditorTabMainLay = VLayout()
 
 editorHLay = HLayout()
 
 editorSideVLay = VLayout()
-
-
 
 -- editorHLay:addLayout(editorSideVLay)
 -- codeEditorTabGroup:setMinWidth(500)
@@ -274,9 +337,7 @@ editorSideVLay = VLayout()
 codeEditorMainTab = Tab()
 codeEditorMainTab:setMovable(true)
 
-codeEditorMainTab:setOnTabChange(function(s, index)
-	setTabIndex(index)
-end)
+codeEditorMainTab:setOnTabChange(function(s, index) setTabIndex(index) end)
 codeEditorMainTab:setOnTabClose(handleTabClose)
 codeEditorMainTab:setTabsCloseable(true)
 codeEditorMainTab:setStyle([[
@@ -287,23 +348,20 @@ Tab:tab-bar{
 
 editorHLay:addChild(codeEditorMainTab)
 
-
 codeEditorTabMainLay:addLayout(editorHLay)
 -- codeEditorTabMainLay:addChild(aa)
 
-cornerEditorContainer =  Container()
+cornerEditorContainer = Container()
 codeEditorMainTab:setCornerChild(cornerEditorContainer)
 
 cornerEditorContainerLayout = HLayout()
 addNewTabCornerButton = Button("")
 addNewTabCornerButton:setIcon(images('editor/new_tab.png'))
-addNewTabCornerButton:setFixedSize(30,30)
+addNewTabCornerButton:setFixedSize(30, 30)
 addNewTabCornerButton:setOnClick(newFile)
 cornerEditorContainerLayout:addChild(addNewTabCornerButton)
 
 cornerEditorContainer:setLayout(cornerEditorContainerLayout)
-
--- addNewTab('Untitled','',nil) -- simply adding a new tab
 
 newFile()
 
@@ -316,14 +374,14 @@ nestedBottomVLay = VLayout()
 editorBottomLay:addLayout(nestedBottomVLay)
 
 codeEditorBottomGroupBox = GroupBox()
-codeEditorBottomGroupBox:setResizeRule('fixed','fixed')
+codeEditorBottomGroupBox:setResizeRule('fixed', 'fixed')
 
 -- Make sure everything goes horizontal inside the groupbox
 bottomGroupBoxLay = HLayout()
 
 -- runAppButton:setOnClick(runApp)
 
-codeEditDecorBar = Image(images('editor/bar_dark.png')) -- That cool looking 
+codeEditDecorBar = Image(images('editor/bar_dark.png')) -- That cool looking
 -- codeEditDecorBar:setImage()
 codeEditDecorBar:setImageSize(15, 15)
 
@@ -335,44 +393,44 @@ codeEditorRunAppButton:setOnClick(runApp)
 bottomGroupBoxLay:addChild(codeEditDecorBar)
 bottomGroupBoxLay:addChild(codeEditorRunAppButton)
 -- bottomGroupBoxLay:addChild(Separator('vertical'))
-bottomGroupBoxLay:addSpacer(Spacer(25,5))
+bottomGroupBoxLay:addSpacer(Spacer(25, 5))
 bottomGroupBoxLay:addChild(Separator('vertical'))
 
-codeEditorNewButton       = Button('New')
+codeEditorNewButton = Button('New')
 codeEditorNewButton:setOnClick(newFile)
 codeEditorNewButton:setIcon(images('editor/new1.png'))
 
-codeEditorCloseTabButton  = Button("Close")
+codeEditorCloseTabButton = Button("Close")
 codeEditorCloseTabButton:setIcon(images('editor/close.png'))
 
-codeEditorSaveButton      = Button("Save")
+codeEditorSaveButton = Button("Save")
 codeEditorSaveButton:setOnClick(saveFile)
 codeEditorSaveButton:setIcon(images('editor/normal.png'))
 
-codeEditorOpenButton      = Button("Open")
+codeEditorOpenButton = Button("Open")
 codeEditorOpenButton:setOnClick(openFile)
 codeEditorOpenButton:setIcon(images('editor/open.png'))
 
-codeEditorRedoButton      = Button("Redo")
+codeEditorRedoButton = Button("Redo")
 codeEditorRedoButton:setIcon(images('editor/redo.png'))
 
-codeEditorUndoButton      = Button("Undo")
+codeEditorUndoButton = Button("Undo")
 codeEditorUndoButton:setIcon(images('editor/undo.png'))
 
-codeEditorCutButton       = Button("Cut")
+codeEditorCutButton = Button("Cut")
 codeEditorCutButton:setIcon(images('editor/cut2.png'))
 
-codeEditorCopyButton      = Button("Copy")
+codeEditorCopyButton = Button("Copy")
 codeEditorCopyButton:setIcon(images('editor/copy.png'))
 
-codeEditorPasteButton     = Button("Paste")
+codeEditorPasteButton = Button("Paste")
 codeEditorPasteButton:setIcon(images('editor/paste.png'))
 
 bottomGroupBoxLay:addChild(codeEditorNewButton)
 bottomGroupBoxLay:addChild(codeEditorCloseTabButton)
 bottomGroupBoxLay:addChild(codeEditorSaveButton)
 bottomGroupBoxLay:addChild(codeEditorOpenButton)
-bottomGroupBoxLay:addSpacer(Spacer(25,5))
+bottomGroupBoxLay:addSpacer(Spacer(25, 5))
 
 bottomGroupBoxLay:addChild(Separator('vertical'))
 
@@ -392,7 +450,7 @@ codeEditorRunProgress = ProgressBar()
 codeEditorRunProgress:setRange(0, 0)
 codeEditorRunProgress:setMaxHeight(5)
 -- runProgress:setMaxWidth(20)
-codeEditorRunProgress:setResizeRule('minimum','fixed')
+codeEditorRunProgress:setResizeRule('minimum', 'fixed')
 codeEditorRunProgress:setVisibility(false)
 
 nestedBottomVLay:addChild(codeEditorRunProgress)

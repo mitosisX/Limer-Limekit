@@ -1,4 +1,4 @@
-app.executeFile(scripts('common/utils/main.lua'))
+-- require 'common/utils/main'
 
 docksLay = VLayout()
 
@@ -14,8 +14,8 @@ scroller:setLayout(scrollerLayout)
 scrollerLayout:setMargins(0, 0, 0, 0)
 
 widgetsAccordion = Accordion() -- The Accordion for all widgets available
-appAccordion = Accordion() -- The Accordion for all app functions
-pyAccordion = Accordion() -- The Accordion for all python utility methods
+appAccordion = Accordion()     -- The Accordion for all app functions
+pyAccordion = Accordion()      -- The Accordion for all python utility methods
 
 -- scrollerLayout:addChild(widgetsAccordion)
 -- scrollerLayout:addChild(appAccordion)
@@ -70,16 +70,22 @@ widgetsList:addImageItems(allWidgetUtils)
 -- ######### App utils listing
 appUtilsList = ListBox() -- List for all app utils
 
-allAppUtils = {'copyFile', 'isIDE', 'renameFolder', 'getFileExt', 'sortArray', 'getStandardPath', 'sortTable',
-               'randomChoice', 'splitString', 'range', 'joinTables', 'sleep', 'weightedGraph', 'getStyles', 'setStyle',
-               'quickSort', 'makeHash', 'hexToRGB', 'readFileLines', 'toBase64', 'fromBase64', 'emoji', 'extractZip',
-               'checkIfFolder', 'exists', 'checkFileEmpty', 'checkDirEmpty', 'getFileSize', 'readFile', 'writeFile',
-               'createFile', 'appendFile', 'readJSON', 'writeJSON', 'getFont', 'openFile', 'colorPicker', 'textInput',
-               'multilineInput', 'comboBoxInput', 'integerInput', 'doubleInput', 'alert', 'errorDialog', 'aboutAlert',
-               'criticalAlert', 'infoAlert', 'warningAlert', 'getClipboardText', 'setClipboarText', 'listFolder',
-               'createFolder', 'playSound', 'getProcesses', 'killProcess', 'getCPUCount', 'getUsers', 'getBatteryInfo',
-               'getDiskPartitions', 'getDiskInfo', 'getBootTime', 'getMachineType', 'getNetworkNodeName',
-               'getProcessorName', 'getPlatformName', 'getSystemRelease', 'getOSName', 'getOSRelease', 'getOSVersion' -- 'checkUniqueChars'
+allAppUtils = {
+    'copyFile', 'isIDE', 'renameFolder', 'getFileExt', 'sortArray',
+    'getStandardPath', 'sortTable', 'randomChoice', 'splitString', 'range',
+    'joinTables', 'sleep', 'weightedGraph', 'getStyles', 'setStyle',
+    'quickSort', 'makeHash', 'hexToRGB', 'readFileLines', 'toBase64',
+    'fromBase64', 'emoji', 'extractZip', 'checkIfFolder', 'exists',
+    'checkFileEmpty', 'checkDirEmpty', 'getFileSize', 'readFile', 'writeFile',
+    'createFile', 'appendFile', 'readJSON', 'writeJSON', 'getFont', 'openFile',
+    'colorPicker', 'textInput', 'multilineInput', 'comboBoxInput',
+    'integerInput', 'doubleInput', 'alert', 'errorDialog', 'aboutAlert',
+    'criticalAlert', 'infoAlert', 'warningAlert', 'getClipboardText',
+    'setClipboarText', 'listFolder', 'createFolder', 'playSound',
+    'getProcesses', 'killProcess', 'getCPUCount', 'getUsers', 'getBatteryInfo',
+    'getDiskPartitions', 'getDiskInfo', 'getBootTime', 'getMachineType',
+    'getNetworkNodeName', 'getProcessorName', 'getPlatformName',
+    'getSystemRelease', 'getOSName', 'getOSRelease', 'getOSVersion' -- 'checkUniqueChars'
 }
 
 -- ######### App utils listing
@@ -91,8 +97,10 @@ end
 
 -- ######### Python utils listing
 
-allPythonUtils = {'str_index', 'import_module', 'method_kwargs', 'getattr', 'getitem', 'table_to_list', 'table_to_dict',
-                  'str_format'}
+allPythonUtils = {
+    'str_index', 'import_module', 'method_kwargs', 'getattr', 'getitem',
+    'table_to_list', 'table_to_dict', 'str_format'
+}
 
 for x in ipairs(allPythonUtils) do
     pyUtilsList:addImageItem(allPythonUtils[x], images('py.png'))
@@ -114,24 +122,20 @@ pyUtilsDock:setChild(pyUtilsList)
 userProjectsListDock = Dock('Your Projects')
 
 items = {
-    "Inbox (24 new)",
-    "Today's meetings",
-    "Pending approvals",
-    "Project milestones",
-    "Team updates",
-    "Personal tasks",
-    "Completed items"
+    "Inbox (24 new)", "Today's meetings", "Pending approvals",
+    "Project milestones", "Team updates", "Personal tasks", "Completed items"
 }
 
 userProjectsList = ListBox() -- Holds the list for available projects
 userProjectsList:setOnItemDoubleClick(function(sender, folder, index)
-    local appFolder  = app.joinPaths(limekitProjectsFolder, folder)
+    local appFolder = app.joinPaths(limekitProjectsFolder, folder)
     local appJSON = app.joinPaths(appFolder, 'app.json')
     finalizeProjectOpening(appJSON) -- Open the project
 end)
 -- userProjectsList:setItems(items)
-userProjectsList:setStyle(currentTheme == 'light' and userProjectsLightStyle or userProjectsDarkStyle)
-userProjectsList:setResizeRule('expanding','expanding')
+userProjectsList:setStyle(currentTheme == 'light' and userProjectsLightStyle or
+    userProjectsDarkStyle)
+userProjectsList:setResizeRule('expanding', 'expanding')
 
 -- userProjectsListDock:setChild(userProjectsList)
 userProjectsListDock:setChild(userProjectsList)

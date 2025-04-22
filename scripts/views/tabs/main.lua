@@ -1,6 +1,6 @@
-app.executeFile(scripts('views/editor/main.lua'))
-app.executeFile(scripts('views/tabs/app/apptab.lua'))
-app.executeFile(scripts('views/tabs/app/properties.lua'))
+require 'views.editor.main'
+require 'views.tabs.app.apptab'
+require 'views.tabs.app.properties'
 
 allAppTabs = Tab() -- The tab holding all tab items
 allAppTabs:setStyle(appTabLightStyle)

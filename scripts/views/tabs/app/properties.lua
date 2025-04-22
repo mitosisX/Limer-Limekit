@@ -14,7 +14,7 @@ propsContentLay = HLayout() -- This is where everything inside the GroupBox will
 
 pathsLay = VLayout()
 pathsHeader = Label('package.path')
-pathsHeader:setTextAlign('center')
+pathsHeader:setTextAlignment('center')
 
 pathsList = ListBox()
 pathsList:addItem('default: misc') -- Only showing that the misc folder is automatically added to path
@@ -29,7 +29,8 @@ addPathButton = Button('add')
 addPathButton:setOnClick(function()
     packagePath = app.folderPickerDialog(limekitWindow, 'Select a path')
 
-    if packagePath ~= miscFolder and packagePath ~= scriptsFolder and packagePath ~= imagesFolder then
+    if packagePath ~= userMiscFolder and packagePath ~= userScriptsFolder and
+        packagePath ~= useImagesFolder then
         table.insert(allRequirePathsTable, packagePath)
 
         pathsList:addItem(packagePath)
@@ -50,7 +51,7 @@ removePathButton:setResizeRule('fixed', 'fixed')
 removePathButton:setOnClick(function()
     row = pathsList:getCurrentRow()
 
-    if row ~= 0 then -- That's where the "default: misc" is
+    if row ~= 0 then                            -- That's where the "default: misc" is
         table.remove(allRequirePathsTable, row) -- ListBox indexing starts at 0
         pathsList:removeItem(row)
 
@@ -70,7 +71,7 @@ propsContentLay:addLayout(pathsLay)
 routesLay = VLayout()
 routesLay:setMargins(20, 0, 0, 0)
 routesHeader = Label('routes')
-routesHeader:setTextAlign('center')
+routesHeader:setTextAlignment('center')
 
 routesList = Table()
 
