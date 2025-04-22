@@ -1,3 +1,6 @@
+-- Hold the UI for displaying user project properties; project name, version, etc...
+-- Editing/modification of user project is also carried out here
+
 appTabMainLay = VLayout()
 appTabMainLay:setContentAlignment('vcenter', 'center')
 
@@ -24,7 +27,7 @@ appDetailsLay2:setContentAlignment('bottom')
 loadedAppName = Label("App:")
 
 appDetailsLay2:addChild(loadedAppName)
-appDetailsLay2:addChild(Label(py.str_format('Your OS: <strong>{}</strong>', app.getOSName())))
+appDetailsLay2:addChild(Label(string.format('Your OS: <strong>%s</strong>', app.getOSName())))
 
 runAppButton = Button('Run')
 runAppButton:setResizeRule('fixed', 'fixed')
@@ -35,7 +38,8 @@ runAppButton:setOnClick(runApp)
 runProgress = ProgressBar()
 runProgress:setRange(0, 0)
 runProgress:setMaxHeight(5)
-runProgress:setMaxWidth(200)
+-- runProgress:setMaxWidth(20)
+runProgress:setResizeRule('maximum','maximum')
 runProgress:setVisibility(false)
 
 appDetailsLay2:addChild(runAppButton)
@@ -85,12 +89,13 @@ appDetailsGridLayout:addChild(editAppEmail, 5, 1)
 -- Add the buttons
 
 editAppButtonLay = HLayout()
-editAppButtonLay:setContentAlignment('right')
+-- editAppButtonLay:setContentAlignment('right')
+editAppButtonLay:addStretch()
 
 saveEditButton = Button('Save')
 saveEditButton:setIcon(images('homepage/create_project/done2.png'))
 saveEditButton:setOnClick(function()
-    askToSave = app.questionAlertDialog(window, 'Confirm', 'Are you sure you want to save the modification?')
+    askToSave = app.questionAlertDialog(limekitWindow, 'Confirm', 'Are you sure you want to save the modification?')
 
     if askToSave then
         newAppName = editAppName:getText()
@@ -104,7 +109,7 @@ saveEditButton:setOnClick(function()
 
         app.writeFile(app.joinPaths(userProjectFolder, 'app.json'), json.stringify(userProjectJSON))
 
-        loadedAppName:setText(py.str_format('App: <strong>{}</strong> ', newAppName))
+        loadedAppName:setText(string.format('App: <strong>%s</strong> ', newAppName))
 
         writeToConsole('project updated successfuly')
 

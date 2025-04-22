@@ -1,4 +1,6 @@
-app.execute(scripts('views/dialogs/create_project.lua'))
+local t = require('nest.tester')
+
+app.executeFile(scripts('views/dialogs/create_project.lua'))
 
 toolbar = Toolbar()
 toolbar:setIconStyle('textbesideicon')
@@ -12,8 +14,14 @@ openProjectToolbarButton:setIcon(images('toolbar/open_project.png'))
 openProjectToolbarButton:setOnClick(projectOpener)
 
 homePageToolbarButton = ToolbarButton('Home Page')
-homePageToolbarButton:setIcon(images('card_file_box_3d.png'))
+homePageToolbarButton:setIcon(images('toolbar/homepage.png'))
 homePageToolbarButton:setOnClick(returnHomePage)
+
+switchToProjectToolbarButton = ToolbarButton('My Project')
+-- switchToProjectToolbarButton:setEnabled(false)
+switchToProjectToolbarButton:setToolTip('Switch back to your project')
+switchToProjectToolbarButton:setIcon(images('toolbar/my_project.png'))
+switchToProjectToolbarButton:setOnClick(returnToMyProject)
 
 recentlyOpenedToolbarButton = ToolbarButton('Recent Projects')
 recentlyOpenedToolbarButton:setToolTip('Projects you just opened in the runner')
@@ -27,4 +35,5 @@ toolbar:addButton(newProjectToolbarButton)
 toolbar:addButton(openProjectToolbarButton)
 toolbar:addButton(ToolbarButton('-'))
 toolbar:addButton(homePageToolbarButton)
-toolbar:addButton(recentlyOpenedToolbarButton)
+toolbar:addButton(switchToProjectToolbarButton)
+-- toolbar:addButton(recentlyOpenedToolbarButton)

@@ -6,6 +6,7 @@ gif:setSize(120, 120)
 welcomeView:addChild(gif)
 
 welcomeText = Label('<strong>Limekit</strong> -')
+-- welcomeText:setBold(true)
 welcomeText:setTextSize(25)
 
 welcomeView:addChild(welcomeText)
@@ -18,7 +19,7 @@ function makeHomepageCards(image_path, text, blue)
     local lay = VLayout()
 
     local image = Image(image_path)
-    image:setImageAlign('center')
+    image:setImageAlignment('center')
     image:resizeImage(80, 80)
 
     local label = Label(text)

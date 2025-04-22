@@ -1,11 +1,8 @@
-app.execute(scripts('commons/functions/main.lua'))
+app.executeFile(scripts('common/utils/main.lua'))
 
 docksLay = VLayout()
 
 toolboxDock = Dock("Toolbox")
-
-toolboxDock:setMaxWidth(250)
--- toolboxDock:setMinWidth(250)
 
 toolboxDock:setMagneticAreas(nil)
 toolboxDock:setProperties(nil)
@@ -20,9 +17,9 @@ widgetsAccordion = Accordion() -- The Accordion for all widgets available
 appAccordion = Accordion() -- The Accordion for all app functions
 pyAccordion = Accordion() -- The Accordion for all python utility methods
 
-scrollerLayout:addChild(widgetsAccordion)
-scrollerLayout:addChild(appAccordion)
-scrollerLayout:addChild(pyAccordion)
+-- scrollerLayout:addChild(widgetsAccordion)
+-- scrollerLayout:addChild(appAccordion)
+-- scrollerLayout:addChild(pyAccordion)
 
 -- ######### Widgets listing
 widgetsList = ListBox() -- Holds the the list for available widgets
@@ -101,27 +98,49 @@ for x in ipairs(allPythonUtils) do
     pyUtilsList:addImageItem(allPythonUtils[x], images('py.png'))
 end
 
-widgetsAccordion:addChild(widgetsList, 'Widgets')
-appAccordion:addChild(appUtilsList, 'app utils')
-pyAccordion:addChild(pyUtilsList, 'Python utils')
+widgetsDock = Dock("widgets")
+widgetsDock:setMinWidth(300)
+widgetsDock:setChild(widgetsList)
 
-toolboxDock:setChild(scroller)
+appUtilsDock = Dock("app utils")
+appUtilsDock:setChild(appUtilsList)
+
+pyUtilsDock = Dock("Python utils")
+pyUtilsDock:setChild(pyUtilsList)
+
+pyUtilsDock = Dock("Python utils")
+pyUtilsDock:setChild(pyUtilsList)
+
+userProjectsListDock = Dock('Your Projects')
+
+items = {
+    "Inbox (24 new)",
+    "Today's meetings",
+    "Pending approvals",
+    "Project milestones",
+    "Team updates",
+    "Personal tasks",
+    "Completed items"
+}
+
+userProjectsList = ListBox() -- Holds the list for available projects
+userProjectsList:setOnItemDoubleClick(function(sender, folder, index)
+    local appFolder  = app.joinPaths(limekitProjectsFolder, folder)
+    local appJSON = app.joinPaths(appFolder, 'app.json')
+    finalizeProjectOpening(appJSON) -- Open the project
+end)
+-- userProjectsList:setItems(items)
+userProjectsList:setStyle(currentTheme == 'light' and userProjectsLightStyle or userProjectsDarkStyle)
+userProjectsList:setResizeRule('expanding','expanding')
+
+-- userProjectsListDock:setChild(userProjectsList)
+userProjectsListDock:setChild(userProjectsList)
 
 appFolderDock = Dock("App directory")
-appFolderDock:setChild(Label('Coming soon'))
+appFolderDock:setMinWidth(300)
 
-appFolderDock:setMagneticAreas({'right'})
+appProjectDirTree = TreeView()
+appProjectDirTree:setHeaderHidden(true)
+appProjectDirTree:setColumnWidth(0, 100)
 
-appLogDock = Dock("Application Log")
-appLogDock:setMagneticAreas(nil)
-appLogDock:setProperties(nil)
-
-logConsole = TextField()
-logConsole:setReadOnly(true) -- console shouldn't be edited
-
-logConsole:setMaxHeight(150)
-
-appLogDock:setChild(logConsole)
-
-docksLay:addChild(appFolderDock)
-
+appFolderDock:setChild(appProjectDirTree)

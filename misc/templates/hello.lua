@@ -1,4 +1,4 @@
-window = Window{title = '{} - Limekit', icon = images('app.png') size={{}, {}}}
+limekitWindow = limekitWindow{title = '{} - Limekit', icon = images('app.png') size={{}, {}}}
 
 mainLay = VLayout()
 label = Label("")
@@ -11,5 +11,5 @@ end)
 mainLay:addChild(label)
 mainLay:addChild(button)
 
-window:setLayout(mainLay)
-window:show()
+limekitWindow:setLayout(mainLay)
+limekitWindow:show()

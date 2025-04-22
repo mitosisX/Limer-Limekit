@@ -27,7 +27,7 @@ pathsGroupLay.setEnabled(false)
 addPathButton = Button('add')
 
 addPathButton:setOnClick(function()
-    packagePath = app.folderPickerDialog(window, 'Select a path')
+    packagePath = app.folderPickerDialog(limekitWindow, 'Select a path')
 
     if packagePath ~= miscFolder and packagePath ~= scriptsFolder and packagePath ~= imagesFolder then
         table.insert(allRequirePathsTable, packagePath)
@@ -36,7 +36,7 @@ addPathButton:setOnClick(function()
 
         packagePathsWriter()
     else
-        app.criticalAlertDialog(window, 'Error!',
+        app.criticalAlertDialog(limekitWindow, 'Error!',
             "Please do not pick the 'misc, images, scripts' folders from your project")
     end
 end)

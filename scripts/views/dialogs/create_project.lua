@@ -1,3 +1,6 @@
+-- This file handles all project creation logic
+
+
 selIconPath = "" -- The path for the app icon, the user selected
 
 projectJsonStruct = {
@@ -8,10 +11,10 @@ projectJsonStruct = {
         copyright = "",
         version = "",
         email = ""
-        -- lua_require = ""
     }
 }
 
+-- This function processes project creation
 function processProjectCreation()
     userProjectNamePicked = createNameLineEdit:getText()
     userProjectVersionPicked = createVersionLineEdit:getText()
@@ -20,14 +23,17 @@ function processProjectCreation()
         if selIconPath ~= "" then
             createUserProject(userProjectNamePicked, userProjectVersionPicked)
         else
-            app.warningAlertDialog(window, 'Not complete', 'Please select an image for your window')
+            app.warningAlertDialog(limekitWindow, 'Not complete', 'Please select an image for your limekitWindow')
         end
     else
-        app.warningAlertDialog(window, 'Not complete', 'Make sure all fields are filled')
+        app.warningAlertDialog(limekitWindow, 'Not complete', 'Make sure all fields are filled')
     end
 end
 
--- This handles all the user project creation
+-- Resonates with the above function (processProjectCreation) to finally create the project
+-- writing to the app.json file and creating the folders required
+-- for the project to be created successfully
+
 function createUserProject(userProjectNamePicked, userProjectVersionPicked)
 
     userProjectFolder = app.joinPaths(limekitProjectsFolder, userProjectNamePicked)
@@ -54,7 +60,7 @@ function createUserProject(userProjectNamePicked, userProjectVersionPicked)
         writeToConsole(userProjectFile)
 
         mainLuaStruct =
-            "-- Welcome to the new era for modern lua gui development\nwindow = Window{title='New app - Limekit', icon = images('app.png'), size={400, 200}}\nwindow:show()"
+            "-- Welcome to the new era for modern lua gui development\n\nwindow = Window{title='New app - Limekit', icon = images('app.png'), size={400, 400}}\nwindow:show()"
 
         -- Now write to the main.lua
         app.writeFile(app.joinPaths(scriptsFolder, 'main.lua'), mainLuaStruct)
@@ -65,9 +71,8 @@ function createUserProject(userProjectNamePicked, userProjectVersionPicked)
         modal:dismiss()
 
         writeToConsole('Created at ' .. userProjectFolder)
-        app.alert(window, 'Success!', 'Project has been created')
+        app.alert(limekitWindow, 'Success!', 'Project has been created')
     else
-        app.criticalAlertDialog(window, 'Project already exists.', 'Could not create the project.')
+        app.criticalAlertDialog(limekitWindow, 'Project already exists.', 'Could not create the project.')
     end
-
 end
