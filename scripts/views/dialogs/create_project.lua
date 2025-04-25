@@ -22,7 +22,7 @@ function processProjectCreation()
             createUserProject(userProjectNamePicked, userProjectVersionPicked)
         else
             app.warningAlertDialog(limekitWindow, 'Not complete',
-                'Please select an image for your limekitWindow')
+                'Please select an image for your Window')
         end
     else
         app.warningAlertDialog(limekitWindow, 'Not complete',
@@ -57,15 +57,19 @@ function createUserProject(userProjectNamePicked, userProjectVersionPicked)
 
         userProjectFile = app.joinPaths(userProjectFolder, 'app.json')
 
-        writeToConsole(userProjectFile)
+        -- writeToConsole(userProjectFile)
 
         -- To replace
         mainLuaStruct =
         "-- Welcome to the new era for modern lua gui development\n\nwindow = Window{title='New app - Limekit', icon = images('app.png'), size={400, 400}}\nwindow:show()"
 
-        -- Now write to the main.lua
+        -- Now write to the main.lua and app.json
+
+        json_string = json.stringify(projectJsonStruct)
+        json_formatted = app.formatJSON(json_string)
+
         app.writeFile(app.joinPaths(userScriptsFolder, 'main.lua'), mainLuaStruct)
-        app.writeFile(userProjectFile, json.stringify(projectJsonStruct))
+        app.writeFile(userProjectFile, json_formatted)
 
         app.copyFile(selIconPath, app.joinPaths(useImagesFolder, 'app.png'))
 

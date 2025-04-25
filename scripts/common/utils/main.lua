@@ -118,7 +118,7 @@ function returnToMyProject() homeStackedWidget:slideNext() end
 -- Modal for project creation
 -- This is the modal that pops up when the user clicks on 'New Project'
 function projectCreator()
-    modal = Modal(limekitWindow, "Let's get you started - Limekit")
+    modal = Modal(limekitWindow, "Let's get you started - Limer")
     modal:setMinSize(550, 400)
     modal:setMaxSize(550, 400)
 
@@ -193,7 +193,7 @@ function projectCreator()
 
     createIcon = Label('Window icon')
     createIcon:setBold(true)
-    createIcon:setWhatsThis('The icon that shows on your limekitWindow') -- Right click to show the 'Whats This'
+    createIcon:setWhatsThis('The icon that shows on your Window') -- Right click to show the 'Whats This'
 
     createIconImage = Label()
     createIconImage:setImage(images('homepage/create_project/pick_image.png'))
@@ -368,6 +368,7 @@ function readPackagePaths()
     if app.exists(requirePathFile) then
         pathsList:clear()
 
+        pathsList:addItem('default: scripts')
         pathsList:addItem('default: misc')
 
         local readTheFile = app.readFile(requirePathFile)
@@ -409,9 +410,11 @@ function aboutPage()
 
     theGroupLay = HLayout()
 
-    gi = GifPlayer(images(app.randomChoice({
-        'homepage/sheep.gif', 'homepage/cat.gif'
-    })))
+    local gifs = { 'homepage/sheep.gif', 'homepage/cat.gif' }
+    local randomIndex = math.random(1, #gifs)
+    local randomFruit = gifs[randomIndex]
+
+    gi = GifPlayer(images(randomFruit))
     gi:setSize(120, 120)
     gi:setResizeRule('fixed', 'fixed')
     gi:setMargins(90, 0, 0, 0)

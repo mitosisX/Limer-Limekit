@@ -11,7 +11,6 @@ function changeTheme(obj)
         setUserProjectsListTheme()
 
         appTabsLightTheme()
-
     elseif theme_ == 'Dark' then
         theme:setTheme('dark')
         obj:setText('Light')
@@ -22,7 +21,6 @@ function changeTheme(obj)
 
         appTabsDarkTheme()
     end
-
 end
 
 -- The menu items visible on the home screen
@@ -37,57 +35,65 @@ appMenubarItems = {
                 shortcut = "Ctrl+N",
                 click = projectCreator
             }, {
-                label = 'Open Project',
-                icon = images('toolbar/open_project.png'),
-                shortcut = "Ctrl+O",
-                click = projectOpener
-            }, {label = '-'}, {
-                label = 'Exit',
-                icon = images('exit.png'),
-                click = function() app.exit() end
-            }
+            label = 'Open Project',
+            icon = images('toolbar/open_project.png'),
+            shortcut = "Ctrl+O",
+            click = projectOpener
+        }, { label = '-' }, {
+            label = 'Exit',
+            icon = images('exit.png'),
+            click = function() app.exit() end
+        }
         }
     }, {
-        label = '&View',
-        name = 'view',
-        submenu = {
-            {label = "Home Page", click = returnHomePage, shortcut = "Ctrl+H"},
-            {label = "Application Log"}, {
-                label = "Theme",
-                submenu = {
-                    {
-                        name = 'light_theme',
-                        label = 'Dark',
-                        icon = images('app/dark.png'),
-                        click = changeTheme
-                    }
+    label = '&View',
+    name = 'view',
+    submenu = {
+        { label = "Cut",       shortcut = "Ctrl+C",    icon = images('editor/cut1.png') },
+        { label = "Copy",      shortcut = "Ctrl+X",    icon = images('editor/copy.png') },
+        { label = "Paste",     shortcut = "Ctrl+V",    icon = images('editor/paste.png') },
+        { label = "-" },
+        { label = "Redo",      shortcut = "Ctrl+Y",    icon = images('editor/redo.png') },
+        { label = "Undo",      shortcut = "Ctrl+Z",    icon = images('editor/undo.png') },
+        { label = "-" },
+        { label = "Home Page", click = returnHomePage, shortcut = "Ctrl+H" },
+        -- {label = "Application Log"},
+        {
+            label = "Theme",
+            submenu = {
+                {
+                    name = 'light_theme',
+                    label = 'Dark',
+                    icon = images('app/dark.png'),
+                    click = changeTheme
                 }
             }
         }
-    }, {
-        label = "&App",
-        submenu = {
-            {label = "Run", shortcut = "Ctrl+R", click = runApp}, {
-                label = "Stop",
-                shortcut = "Ctrl+X",
-                click = function(obj)
-                    if projectRunnerProcess then
-                        projectRunnerProcess:stop()
-                    end
-                end
-            }, {label = "-"}
-            -- {
-            --     label = "Build",
-            --     shortcut = 'Ctrl+B'
-            -- }
-        }
-    }, {
-        label = "&Help",
-        submenu = {
-            --     {
-            --     label = 'Register'
-            -- }, 
-            {label = "About Limekit", click = aboutPage}
-        }
     }
+}, {
+    label = "&App",
+    submenu = {
+        { label = "Run", shortcut = "Ctrl+R", click = runApp }, {
+        label = "Stop",
+        shortcut = "Ctrl+X",
+        click = function(obj)
+            if projectRunnerProcess then
+                projectRunnerProcess:stop()
+            end
+        end
+    }, { label = "-" }
+        -- {
+        --     label = "Build",
+        --     shortcut = 'Ctrl+B'
+        -- }
+    }
+}, {
+    label = "&Help",
+    submenu = {
+        --     {
+        --     label = 'Register'
+        -- },
+        { label = "About Limer", click = aboutPage }
+    }
+}
 }

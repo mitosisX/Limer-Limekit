@@ -1,5 +1,7 @@
--- There are two addStretch() to push children to center and then to push the "made with love" text to the bottom
+require 'scripts.views.dialogs.create_project'
 
+
+-- There are two addStretch() to push children to center and then to push the "made with love" text to the bottom
 welcomeView = VLayout()
 welcomeView:setContentAlignment('vcenter', 'center')
 
@@ -46,7 +48,7 @@ end
 
 makeHomepageCards(images('homepage/modern.png'), 'Develop modern UI')
 makeHomepageCards(images('homepage/lua_logo.png'), 'Developed in lua')
-makeHomepageCards(images('homepage/hundred.png'), 'Free for all users')
+makeHomepageCards(images('homepage/hundred.png'), 'Free for everyone')
 makeHomepageCards(images('homepage/battery.png'), 'Batteries Included')
 makeHomepageCards(images('homepage/bug.png'), 'Please report bugs')
 makeHomepageCards(images('homepage/support.png'),

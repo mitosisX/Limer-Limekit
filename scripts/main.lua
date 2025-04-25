@@ -1,5 +1,11 @@
 --[[
-							Limer
+
+							 _     _                               _               ___ ____  _____
+							| |   (_)_ __ ___   ___ _ __          | |_   _  __ _  |_ _|  _ \| ____|
+							| |   | | '_ ` _ \ / _ \ '__|  _____  | | | | |/ _` |  | || | | |  _|
+							| |___| | | | | | |  __/ |    |_____| | | |_| | (_| |  | || |_| | |___
+							|_____|_|_| |_| |_|\___|_|            |_|\__,_|\__,_| |___|____/|_____|
+
 
 			Copyright: Take bytes
 			Author: Omega Msiska
@@ -8,22 +14,41 @@
 			possible in the hope that it is useful for educational purposes. It remains the copyright of the author)
 
 		v 1.0
-		Development Started: 10 November, 2023
+		Development: 10 November, 2023
+
+		v1.1
+		Development: 10 April, 2025
 
 ]] --
+
+--[[
+    				Limer
+
+		Copyright: Take bytes
+		Author: Omega Msiska
+
+		NOTE: This source code is provided unobfuscated, commented and written in the simplest Lua syntax
+		possible in the hope that it is useful for educational purposes. It remains the copyright of the author.
+
+    v1.0
+    Development: 10 November 2023
+
+    v1.1
+    Development: 10 April 2025
+]] --
+
 currentTheme = 'light'
 
 theme = app.Theme('darklight')
 theme:setTheme(currentTheme)
 
-json = require 'json'         -- to handle every json in this app
+json = require 'json'         -- to handle every json in this app. Well, mostly...
 
 local APP_FONT_SIZE = 9.9     -- The app font size, for whatever reason, using 10 makes the window not fullscreen
 local APP_WINDOW_WIDTH = 1000 -- App window width
 local APP_WINDOW_HEIGHT = 400 -- App window height
 
--- System related
-projectRunnerProcess = None -- The process handling the execution of user program
+projectRunnerProcess = None   -- The process handling the execution of user programs
 
 -- User files and folders
 documentsFolder = app.getStandardPath('documents')                         -- locate 'My Documents' folder (system independent)

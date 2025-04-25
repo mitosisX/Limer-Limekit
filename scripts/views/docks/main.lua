@@ -21,7 +21,7 @@ pyAccordion = Accordion()      -- The Accordion for all python utility methods
 -- scrollerLayout:addChild(appAccordion)
 -- scrollerLayout:addChild(pyAccordion)
 
--- ######### Widgets listing
+-- Widgets listing
 widgetsList = ListBox() -- Holds the the list for available widgets
 
 allWidgetUtils = {
@@ -67,7 +67,7 @@ allWidgetUtils = {
 
 widgetsList:addImageItems(allWidgetUtils)
 
--- ######### App utils listing
+-- App utils listing
 appUtilsList = ListBox() -- List for all app utils
 
 allAppUtils = {
@@ -88,14 +88,14 @@ allAppUtils = {
     'getSystemRelease', 'getOSName', 'getOSRelease', 'getOSVersion' -- 'checkUniqueChars'
 }
 
--- ######### App utils listing
+--App utils listing
 pyUtilsList = ListBox() -- For all python utils
 
 for x in ipairs(allAppUtils) do
     appUtilsList:addImageItem(allAppUtils[x], images('widgets/method.png'))
 end
 
--- ######### Python utils listing
+--Python utils listing
 
 allPythonUtils = {
     'str_index', 'import_module', 'method_kwargs', 'getattr', 'getitem',

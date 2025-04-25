@@ -3,10 +3,14 @@ stateLogic = {}
 
 -- returns the current tab editor in use
 function getCurrentTabEditor()
-    local child = codeEditorMainTab:getChildAt(
+    local groupBox = codeEditorMainTab:getChildAt(
         codeEditorMainTab:getCurrentIndex())
 
-    return child
+    local groupBoxLayout = groupBox:getLayout()
+    local lineNumbers = groupBoxLayout:getChildAt(1)
+    local editor = groupBoxLayout:getChildAt(2)
+
+    return editor, lineNumbers
 end
 
 function handleTabClose()
@@ -24,6 +28,7 @@ function handleTabClose()
                 string.format(
                     'Do you want to save changes to %s?',
                     tabText)
+            --     ,
             -- { 'Save', 'Discard', 'Cancel' }
             )
 
@@ -45,10 +50,17 @@ function handleTabClose()
 
     -- By all means, never close the main file in the root folder of user project
     if mainFilePath == stateLogic[editor].filePath then
-        writeToConsole('You cannot close the main.lua file')
+        writeToConsole('You can not close the main.lua file')
         return
     end
 
+    if codeEditorMainTab:getCount() == 1 then
+        writeToConsole('You can not close the only remaining tab')
+        return
+    end
+
+
+    stateLogic[editor] = nil -- remove the editor object from the state logic
     codeEditorMainTab:removeTab(currentTabIndex)
 end
 
@@ -117,32 +129,34 @@ function saveFile()
     local editor = getCurrentTabEditor()
     local item = stateLogic[editor]
 
-    if item.filePath == nil then
-        local savedName = app.saveFileDialog(window, 'Save your file', '',
-            { ['lua file'] = { '.lua' } })
+    print('############# ', item)
 
-        if savedName ~= nil then
-            saveFileContent(savedName, editor:getText())
+    if item then
+        if item.filePath == nil then
+            local savedName = app.saveFileDialog(window, 'Save your file', '',
+                { ['lua file'] = { '.lua' } })
 
-            local fileName = app.getFileName(savedName)
+            if savedName ~= nil then
+                saveFileContent(savedName, editor:getText())
 
-            setTabFileName(currentTabIndex, fileName)
+                local fileName = app.getFileName(savedName)
 
-            codeEditorMainTab:setTabText(currentTabIndex, fileName)
+                setTabFileName(currentTabIndex, fileName)
+
+                codeEditorMainTab:setTabText(currentTabIndex, fileName)
+                editor:setModified(false)
+
+                showSavedIcon()
+            end
+        else
+            local savePath = item.filePath
+            local saveContent = editor:getText()
+
+            app.writeFile(savePath, saveContent)
             editor:setModified(false)
 
             showSavedIcon()
         end
-    else
-        local savePath = item.filePath
-        local saveContent = editor:getText()
-
-        print('#### ', saveContent)
-
-        app.writeFile(savePath, saveContent)
-        editor:setModified(false)
-
-        showSavedIcon()
     end
 end
 
@@ -208,24 +222,32 @@ function createMenu()
     window:setMenubar(menubar)
 end
 
-function updateTabIcon(editor)
-    local index = codeEditorMainTab:getIndexOf(editor)
+function updateLineNumbers()
+    local editor, lineNumbers = getCurrentTabEditor()
+    lineNumbers:clear()
+    local line_count = editor:getLineCount()
+
+    local p = ""
+    for i = 1, line_count do
+        p = p .. tostring(i) .. (i < line_count and "\n" or "")
+    end
+
+    lineNumbers:setText(p)
+end
+
+function updateTabIcon(container)
+    local index = codeEditorMainTab:getIndexOf(container)
 
     if index >= 1 then
+        local editor = getCurrentTabEditor()
         -- Check if the document content have indeed been modified
         if editor:isModified() then
             showUnsavedIcon()
         else
             showSavedIcon()
         end
-    end
-end
 
-function handleContentChange(s, position, chars_removed, chars_added)
-    -- Handle actual content change
-    if chars_removed > 0 or chars_added > 0 then
-        stateLogic[currentTabIndex].hasUnsavedChanges = true
-        -- print('###### Qt thinks really changed')
+        updateLineNumbers()
     end
 end
 
@@ -247,23 +269,26 @@ function addSyntaxHighlight(editor)
         table.insert(highlightingRules, { RegularExpression(pattern), keyword_format })
     end
 
+    -- Highlights strings
     string_format = TextFormat()
     string_format.setForegroundColor(163, 21, 21) -- Red
 
     table.insert(highlightingRules, { RegularExpression('\\".*?\"'), string_format })
     table.insert(highlightingRules, { RegularExpression('\'.*?\''), string_format })
 
-
+    -- Highlights comments
     comment_format = TextFormat()
     comment_format:setForegroundColor(0, 128, 0) -- green
 
     table.insert(highlightingRules, { RegularExpression('--.*'), comment_format })
     table.insert(highlightingRules, { RegularExpression("--\\[\\[.*?\\]\\]"), comment_format })
 
+    -- Highlights numbers
     number_format = TextFormat()
     number_format:setForegroundColor(128, 0, 128) -- Purple
     table.insert(highlightingRules, { RegularExpression('\'.*?\''), number_format })
 
+    -- Highlights functions
     function_format = TextFormat()
     function_format:setForegroundColor(42, 0, 255) -- Darker blue
     function_format:setFontWeight('bold')
@@ -275,8 +300,8 @@ function addSyntaxHighlight(editor)
         for _, rules in ipairs(highlightingRules) do
             local pattern, format = rules[1], rules[2]
 
-            -- The following code is a workaround, the code still uses python syntax
-            -- but the regex is Lua. The regex engine is not the same as Python's.
+            -- The following code is a workaround, the code uses python syntax
+            -- but the regex is lua. The regex engine is not the same as python's.
 
             local match_iterator = pattern.globalMatch(text)
 
@@ -289,26 +314,95 @@ function addSyntaxHighlight(editor)
     end)
 end
 
--- Handles creation of a new tab
+--Handles creation of a new tab
+-- Consists if an HLay that holds a linenumber Label and the editor
+
 function addNewTab(title, content, path)
+    local editorLineContainer = Container()
+
+    local editorLineHLay = HLayout()
+    editorLineHLay:setMargins(0, 0, 0, 0)
+    editorLineHLay:setSpacing(0)
+    editorLineContainer:setLayout(editorLineHLay)
+
     local editor = TextField()
-    editor:setTextSize(12)
+    editor:setTabSize(8)
+    editor:setTextSize(10)
+
+    local lineNumbers = TextField()
+    -- lineNumbers:setStyle([[
+    --     TextField {{
+    --         background: #f0f0f0;
+    --         border: none;
+    --         color: #888;
+    --         font: 11pt;
+    --         padding-right: 5px;
+    --     }}
+    -- ]])
+    lineNumbers:setTextInteraction('none')
+    lineNumbers:setTextSize(10)
+    lineNumbers:setFixedWidth(30)
+    lineNumbers:setVerticalScrollBarBehavior('hidden')
+    lineNumbers:setReadOnly(true)
+    lineNumbers:setFrameShape('none')
+
+    -- lineNumbers:setMinHeight(100)
+    -- lineNumbers:setResizeRule('fixed', 'minimum')
+    -- lineNumbers:setTextSize(10)
+    -- lineNumbers:setMargins(0, 3, 0, 0)
+
+
+
+    function updateLineNumberss()
+        local text = ''
+        local blockCount = editor:getBlockCount()
+
+        for i = 1, blockCount do
+            text = text .. string.format("%d\n", i)
+        end
+
+        if text:sub(-1) == '\n' then
+            text = text:sub(1, -2)
+        end
+
+        lineNumbers:setText(text)
+    end
+
+    function updateLineNumbersf()
+        lineNumbers:clear()
+        local line_count = editor:getLineCount()
+
+        local p = ""
+        for i = 1, line_count do
+            p = p .. tostring(i) .. (i < line_count and "\n" or "")
+        end
+
+        lineNumbers:setText(p)
+    end
 
     addSyntaxHighlight(editor)
 
     -- editor:setWrapMode('nowrap')
     editor:setPlainText(content)
-
     editor:setModified(false)
 
     -- editor:setOnKeyPress(function(s, event)
     -- end)
 
-    editor:setOnModificationChanged(function() updateTabIcon(editor) end)
+    editor:setOnVerticalScrollBarValueChange(function(sender, value)
+        lineNumbers:setVerticalScrollBarValue(value)
+    end)
+    editor:setOnModificationChanged(function() updateTabIcon(editorLineContainer) end)
+    editor:setOnCursorPositionChanged(updateLineNumbers)
 
-    index = codeEditorMainTab:addTab(editor, title, images('editor/normal.png'))
+    editorLineHLay:addChild(lineNumbers)
+    editorLineHLay:addChild(editor)
+
+    index = codeEditorMainTab:addTab(editorLineContainer, title, images('editor/normal.png'))
     codeEditorMainTab:setCurrentIndex(index)
     editor:setFocus()
+
+    updateLineNumbers()
 
     return editor, path
 end
