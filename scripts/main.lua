@@ -117,6 +117,15 @@ consoleLogTab:setLayout(consoLay)
 consoCodeTab:addTab(consoleLogTab, 'Console Log')
 
 -- The remote code execution tab
+--
+-- 		HOW CODE INJECTION WORKS (IN A NUTSHELL)
+--
+-- 	** The code injection feature is not advanced; not a trustworthy hotreload.
+--
+-- Content from codeInjectionField TextField is written to ".limekit/_code.lua"
+-- and with the engine watching the .limekit dir. Once the engine notices a file change,
+-- it instantly reads from the file and deletes it, to keep the watch running.
+-- The engine executes the lua script
 
 remoteCodeExecutionItem = Container()
 codeInjectionLay = VLayout()
@@ -136,6 +145,7 @@ runInjectionCodeButton:setOnClick(function()
 		-- local result = app.executeCode(injectionCodeContent) -- execute the code in the field
 		-- logConsole:appendText(result) -- append the result to the console log
 		app.writeFile(codeInjectionFile, injectionCodeContent)
+		codeInjectionField:clear()
 	else
 		app.criticalAlertDialog(limekitWindow, 'Error!',
 			"You'll need to write some code first...")

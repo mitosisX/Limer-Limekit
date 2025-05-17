@@ -14,7 +14,7 @@ function getCurrentTabEditor()
 end
 
 function handleTabClose()
-    local editor = getCurrentTabEditor()
+    local editor, lineNumbers = getCurrentTabEditor()
 
     local mainFilePath = app.joinPaths(userScriptsFolder, 'main.lua')
 

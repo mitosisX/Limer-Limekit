@@ -1,22 +1,34 @@
 -- Miscellaneous functions used throughout the app
 -- User shouldn't inject code when the app is not running
-function disableCodeInjectionRunButton() runInjectionCodeButton:setEnabled(false) end
+function disableCodeInjectionRunButton()
+    runInjectionCodeButton:setEnabled(false)
+end
 
 -- Functions to be invoked once the app has been closed
-function appCloseCallBack() disableCodeInjectionRunButton() end
+function appCloseCallBack()
+    disableCodeInjectionRunButton()
+end
 
 local function starts_with(str, prefix)
     return string.sub(str, 1, #prefix) == prefix
 end
 
-function appTabsLightTheme() allAppTabs:setStyle(appTabLightStyle) end
+function appTabsLightTheme()
+    allAppTabs:setStyle(appTabLightStyle)
+end
 
-function appTabsDarkTheme() allAppTabs:setStyle(appTabDarkStyle) end
+function appTabsDarkTheme()
+    allAppTabs:setStyle(appTabDarkStyle)
+end
 
 -- Hold other xecute when switched to dark mode
-function darkModeCallBack() appTabsDarkTheme() end
+function darkModeCallBack()
+    appTabsDarkTheme()
+end
 
-function lightModeCallBack() appTabsLightTheme() end
+function lightModeCallBack()
+    appTabsLightTheme()
+end
 
 -- loads all the user projects and displays them for easy access
 function fetchAllProjectsForUser()
@@ -37,13 +49,13 @@ end
 
 -- Basically, just sets the userprojects listbox theme
 function setUserProjectsListTheme()
-    userProjectsList:setStyle(
-        currentTheme == 'light' and userProjectsLightStyle or
-        userProjectsDarkStyle)
+    userProjectsList:setStyle(currentTheme == 'light' and userProjectsLightStyle or userProjectsDarkStyle)
 end
 
 -- The funtion that writes to the console in the app
-function writeToConsole(content) logConsole:appendText('>> ' .. content) end
+function writeToConsole(content)
+    logConsole:appendText('>> ' .. content)
+end
 
 function createTreeItem(name, icon)
     item = TreeViewItem(name)
@@ -83,8 +95,7 @@ function showUserProjectDir(treeView, path)
         local folder_name = entry[1]
         local folder_path = entry[2]
 
-        local item = createTreeItem(folder_name,
-            limekitWindow:getStandardIcon('SP_DirIcon'))
+        local item = createTreeItem(folder_name, limekitWindow:getStandardIcon('SP_DirIcon'))
 
         treeView:addRow(item)
         showUserProjectDir(item, folder_path)
@@ -96,10 +107,8 @@ function showUserProjectDir(treeView, path)
         local file_name = entry[1]
         local file_path = entry[2]
 
-        local item = createTreeItem(file_name, limekitWindow:getStandardIcon(
-            'SP_FileIcon'))
-        local item2 = createTreeItem(file_name, limekitWindow:getStandardIcon(
-            'SP_FileIcon'))
+        local item = createTreeItem(file_name, limekitWindow:getStandardIcon('SP_FileIcon'))
+        local item2 = createTreeItem(file_name, limekitWindow:getStandardIcon('SP_FileIcon'))
 
         treeView:addRow(item)
 
@@ -108,12 +117,49 @@ function showUserProjectDir(treeView, path)
 end
 
 -- Clears the console text area
-function clearConsole() logConsole:setText("") end
+function clearConsole()
+    logConsole:setText("")
+end
 
 -- This function is called to return to the home page from the app's page
-function returnHomePage() homeStackedWidget:slidePrev() end
+function returnHomePage()
+    homeStackedWidget:slidePrev()
+end
 
-function returnToMyProject() homeStackedWidget:slideNext() end
+function returnToMyProject()
+    homeStackedWidget:slideNext()
+end
+
+function projectCreatorr()
+    local MIN_MODAL_WIDTH = 1000
+    local MIN_MODAL_HEIGHT = 700
+
+    modal = Modal(limekitWindow, "Let's get you started - Limer")
+    modal:setMinSize(MIN_MODAL_WIDTH, MIN_MODAL_HEIGHT)
+    modal:setMaxSize(MIN_MODAL_WIDTH, MIN_MODAL_HEIGHT)
+
+    createMainLayout = VLayout()
+    createMainLayout:setContentAlignment('top')
+
+    navContainer = Container()
+    navContainer:setMinSize(100, 100)
+
+    l = HLayout()
+    l:addChild(Button('Hello man!'))
+    navContainer:setLayout(l)
+    navContainer:setSize(10, 100)
+    navContainer:setStyle([[
+        background-color:#d0f0c0;
+    ]])
+
+    createMainLayout:addChild(Button('Hello'))
+
+    createMainLayout:addChild(navContainer)
+
+    modal:setLayout(createMainLayout)
+
+    modal:show()
+end
 
 -- Modal for project creation
 -- This is the modal that pops up when the user clicks on 'New Project'
@@ -199,9 +245,9 @@ function projectCreator()
     createIconImage:setImage(images('homepage/create_project/pick_image.png'))
     createIconImage:setCursor('pointinghand')
     createIconImage:setOnClick(function(obj)
-        selIcon = app.openFileDialog(limekitWindow,
-            "Pick and image for the app", "",
-            { ["App Icon"] = { ".png" } })
+        selIcon = app.openFileDialog(limekitWindow, "Pick and image for the app", "", {
+            ["App Icon"] = { ".png" }
+        })
 
         if selIcon ~= nil then
             selIconPath = app.normalPath(selIcon)
@@ -298,9 +344,9 @@ end
 
 -- This function is called when the user clicks on the 'Open Project' button
 function projectOpener()
-    local file = app.openFileDialog(limekitWindow, "Open a project",
-        limekitProjectsFolder,
-        { ["Limekit app"] = { ".json" } })
+    local file = app.openFileDialog(limekitWindow, "Open a project", limekitProjectsFolder, {
+        ["Limekit app"] = { ".json" }
+    })
 
     if file ~= nil then
         finalizeProjectOpening(app.normalPath(file))
@@ -368,7 +414,6 @@ function readPackagePaths()
     if app.exists(requirePathFile) then
         pathsList:clear()
 
-        pathsList:addItem('default: scripts')
         pathsList:addItem('default: misc')
 
         local readTheFile = app.readFile(requirePathFile)

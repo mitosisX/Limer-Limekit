@@ -17,7 +17,9 @@ pathsHeader = Label('package.path')
 pathsHeader:setTextAlignment('center')
 
 pathsList = ListBox()
-pathsList:addItem('default: misc') -- Only showing that the misc folder is automatically added to path
+pathsList:addItem('default folders: misc & scripts') -- Only showing that the misc folder is automatically added to path
+-- pathsList:addItem('default: scripts')
+
 
 pathsGroupLay = HLayout()
 pathsGroupLay:setContentAlignment('right')
@@ -70,7 +72,7 @@ propsContentLay:addLayout(pathsLay)
 
 routesLay = VLayout()
 routesLay:setMargins(20, 0, 0, 0)
-routesHeader = Label('routes')
+routesHeader = Label('aliases')
 routesHeader:setTextAlignment('center')
 
 routesList = Table()

@@ -9,6 +9,9 @@ projectJsonStruct = {
         copyright = "",
         version = "",
         email = ""
+    },
+    files = {
+        aliases = {}
     }
 }
 
@@ -21,12 +24,10 @@ function processProjectCreation()
         if selIconPath ~= "" then
             createUserProject(userProjectNamePicked, userProjectVersionPicked)
         else
-            app.warningAlertDialog(limekitWindow, 'Not complete',
-                'Please select an image for your Window')
+            app.warningAlertDialog(limekitWindow, 'Not complete', 'Please select an image for your Window')
         end
     else
-        app.warningAlertDialog(limekitWindow, 'Not complete',
-            'Make sure all fields are filled')
+        app.warningAlertDialog(limekitWindow, 'Not complete', 'Make sure all fields are filled')
     end
 end
 
@@ -35,8 +36,7 @@ end
 -- for the project to be created successfully
 
 function createUserProject(userProjectNamePicked, userProjectVersionPicked)
-    userProjectFolder = app.joinPaths(limekitProjectsFolder,
-        userProjectNamePicked)
+    userProjectFolder = app.joinPaths(limekitProjectsFolder, userProjectNamePicked)
 
     if not app.exists(userProjectFolder) then
         projectJsonStruct.project.name = userProjectNamePicked
@@ -76,9 +76,13 @@ function createUserProject(userProjectNamePicked, userProjectVersionPicked)
         modal:dismiss()
 
         writeToConsole('Created at ' .. userProjectFolder)
+
+        -- local appFolder = app.joinPaths(limekitProjectsFolder, folder)
+        local appJSON = app.joinPaths(userProjectFolder, 'app.json')
+        finalizeProjectOpening(appJSON) -- Open the project
+
         app.alert(limekitWindow, 'Success!', 'Project has been created')
     else
-        app.criticalAlertDialog(limekitWindow, 'Project already exists.',
-            'Could not create the project.')
+        app.criticalAlertDialog(limekitWindow, 'Project already exists.', 'Could not create the project.')
     end
 end
