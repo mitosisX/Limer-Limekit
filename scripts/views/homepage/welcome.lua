@@ -72,7 +72,7 @@ welcomeView:addLayout(commandLay)
 
 welcomeView:addStretch() -- final stretch
 
-madeWithLoveText = Label('Built with LOVE from Malawi')
+madeWithLoveText = Label('Built with LOVE from Malawi (warm heart of Africa)')
 madeWithLoveText:setBold(true)
 madeWithLoveText:setTextColor('#2979FF')
 madeWithLoveText:setTextSize(10)

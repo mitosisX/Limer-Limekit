@@ -1,0 +1,37 @@
+[
+    {
+        "label": "FolderStructureGenerator",
+        "importPath": "folder_structure",
+        "description": "folder_structure",
+        "isExtraImport": true,
+        "detail": "folder_structure",
+        "documentation": {}
+    },
+    {
+        "label": "folders_to_ignore",
+        "kind": 5,
+        "importPath": "scripts.main",
+        "description": "scripts.main",
+        "peekOfCode": "folders_to_ignore = [\n]\n# Generate the markdown representation of the folder structure\nfolder_structure_generator = FolderStructureGenerator(ignored_folders=folders_to_ignore)\nfolder_structure_md = folder_structure_generator.generate_folder_structure_md()\n# Print the markdown representation of the folder structure\nprint(folder_structure_md)",
+        "detail": "scripts.main",
+        "documentation": {}
+    },
+    {
+        "label": "folder_structure_generator",
+        "kind": 5,
+        "importPath": "scripts.main",
+        "description": "scripts.main",
+        "peekOfCode": "folder_structure_generator = FolderStructureGenerator(ignored_folders=folders_to_ignore)\nfolder_structure_md = folder_structure_generator.generate_folder_structure_md()\n# Print the markdown representation of the folder structure\nprint(folder_structure_md)",
+        "detail": "scripts.main",
+        "documentation": {}
+    },
+    {
+        "label": "folder_structure_md",
+        "kind": 5,
+        "importPath": "scripts.main",
+        "description": "scripts.main",
+        "peekOfCode": "folder_structure_md = folder_structure_generator.generate_folder_structure_md()\n# Print the markdown representation of the folder structure\nprint(folder_structure_md)",
+        "detail": "scripts.main",
+        "documentation": {}
+    }
+]

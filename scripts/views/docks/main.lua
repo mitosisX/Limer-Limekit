@@ -2,7 +2,7 @@
 
 docksLay = VLayout()
 
-toolboxDock = Dock("Toolbox")
+toolboxDock = Dockable("Toolbox")
 
 toolboxDock:setMagneticAreas(nil)
 toolboxDock:setProperties(nil)
@@ -106,20 +106,20 @@ for x in ipairs(allPythonUtils) do
     pyUtilsList:addImageItem(allPythonUtils[x], images('py.png'))
 end
 
-widgetsDock = Dock("widgets")
+widgetsDock = Dockable("widgets")
 widgetsDock:setMinWidth(300)
 widgetsDock:setChild(widgetsList)
 
-appUtilsDock = Dock("app utils")
+appUtilsDock = Dockable("app utils")
 appUtilsDock:setChild(appUtilsList)
 
-pyUtilsDock = Dock("Python utils")
+pyUtilsDock = Dockable("Python utils")
 pyUtilsDock:setChild(pyUtilsList)
 
-pyUtilsDock = Dock("Python utils")
+pyUtilsDock = Dockable("Python utils")
 pyUtilsDock:setChild(pyUtilsList)
 
-userProjectsListDock = Dock('Your Projects')
+userProjectsListDock = Dockable('Your Projects')
 
 items = {
     "Inbox (24 new)", "Today's meetings", "Pending approvals",
@@ -146,7 +146,7 @@ userProjectsList:setResizeRule('expanding', 'expanding')
 -- userProjectsListDock:setChild(userProjectsList)
 userProjectsListDock:setChild(userProjectsList)
 
-appFolderDock = Dock("App directory")
+appFolderDock = Dockable("App directory")
 appFolderDock:setMinWidth(300)
 
 appProjectDirTree = TreeView()

@@ -135,6 +135,21 @@ codeInjHLay:setContentAlignment('left')
 -- codeInjHLay:addStretch()
 
 runInjectionCodeButton = Button('Run')
+-- runInjectionCodeButton:setStyle([[
+-- Button {
+-- 	background-color: #4CAF50;
+-- 	color: white;
+-- 	border: none;
+-- 	padding: 8px;
+-- 	border-radius: 4px;
+-- }
+-- Button:hover {
+-- 	background-color: #45a049;
+-- }
+-- Button:disabled {
+-- 	background-color: #cccccc;
+-- }
+-- ]])
 runInjectionCodeButton:setEnabled(false)
 runInjectionCodeButton:setOnClick(function()
 	if not projectIsRunning then end
@@ -199,11 +214,11 @@ limekitWindow:setMenubar(menubar)
 
 limekitWindow:addToolbar(toolbar)
 
-limekitWindow:addDock(widgetsDock, 'left')
-limekitWindow:addDock(appUtilsDock, 'left')
-limekitWindow:addDock(pyUtilsDock, 'left')
-limekitWindow:addDock(appFolderDock, 'right')
-limekitWindow:addDock(userProjectsListDock, 'right')
+limekitWindow:addDockable(widgetsDock, 'left')
+limekitWindow:addDockable(appUtilsDock, 'left')
+limekitWindow:addDockable(pyUtilsDock, 'left')
+limekitWindow:addDockable(appFolderDock, 'right')
+limekitWindow:addDockable(userProjectsListDock, 'right')
 
 homescreenSplitter = Splitter('vertical')
 

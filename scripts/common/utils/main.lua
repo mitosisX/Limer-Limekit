@@ -414,7 +414,7 @@ function readPackagePaths()
     if app.exists(requirePathFile) then
         pathsList:clear()
 
-        pathsList:addItem('default: misc')
+        pathsList:addItem('default: misc& scripts')
 
         local readTheFile = app.readFile(requirePathFile)
         allRequirePathsTable = app.splitString(readTheFile, '\n')
