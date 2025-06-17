@@ -1,0 +1,10 @@
+-- Core initialization
+projectRunnerProcess = nil
+userProjectJSON = nil
+userProjectFolder = ""
+requirePathFile = ""
+allRequirePathsTable = {}
+projectIsRunning = false
+userScriptsFolder = ""
+useImagesFolder = ""
+userMiscFolder = ""

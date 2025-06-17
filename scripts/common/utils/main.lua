@@ -1,5 +1,6 @@
 -- Miscellaneous functions used throughout the app
 -- User shouldn't inject code when the app is not running
+
 function disableCodeInjectionRunButton()
     runInjectionCodeButton:setEnabled(false)
 end
@@ -128,37 +129,6 @@ end
 
 function returnToMyProject()
     homeStackedWidget:slideNext()
-end
-
-function projectCreatorr()
-    local MIN_MODAL_WIDTH = 1000
-    local MIN_MODAL_HEIGHT = 700
-
-    modal = Modal(limekitWindow, "Let's get you started - Limer")
-    modal:setMinSize(MIN_MODAL_WIDTH, MIN_MODAL_HEIGHT)
-    modal:setMaxSize(MIN_MODAL_WIDTH, MIN_MODAL_HEIGHT)
-
-    createMainLayout = VLayout()
-    createMainLayout:setContentAlignment('top')
-
-    navContainer = Container()
-    navContainer:setMinSize(100, 100)
-
-    l = HLayout()
-    l:addChild(Button('Hello man!'))
-    navContainer:setLayout(l)
-    navContainer:setSize(10, 100)
-    navContainer:setStyle([[
-        background-color:#d0f0c0;
-    ]])
-
-    createMainLayout:addChild(Button('Hello'))
-
-    createMainLayout:addChild(navContainer)
-
-    modal:setLayout(createMainLayout)
-
-    modal:show()
 end
 
 -- Modal for project creation

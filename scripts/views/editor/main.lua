@@ -129,8 +129,6 @@ function saveFile()
     local editor = getCurrentTabEditor()
     local item = stateLogic[editor]
 
-    print('############# ', item)
-
     if item then
         if item.filePath == nil then
             local savedName = app.saveFileDialog(window, 'Save your file', '',
