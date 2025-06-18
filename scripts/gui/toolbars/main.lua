@@ -1,5 +1,6 @@
 local ProjectCreator = require "gui.modals.project_creator"
 local Navigation = require "gui.navigation"
+local AppState = require "app.core.app_state"
 
 toolbar = Toolbar()
 toolbar:setIconStyle('textbesideicon')
@@ -17,7 +18,7 @@ homePageToolbarButton:setIcon(images('toolbar/homepage.png'))
 homePageToolbarButton:setOnClick(Navigation.returnHomePage)
 
 switchToProjectToolbarButton = ToolbarButton('My Project')
--- switchToProjectToolbarButton:setEnabled(false)
+switchToProjectToolbarButton:setEnabled(AppState.projectIsRunningfalse and true or false)
 switchToProjectToolbarButton:setToolTip('Switch back to your project')
 switchToProjectToolbarButton:setIcon(images('toolbar/my_project.png'))
 switchToProjectToolbarButton:setOnClick(Navigation.returnToMyProject)
@@ -36,4 +37,4 @@ toolbar:addButton(homePageToolbarButton)
 toolbar:addButton(switchToProjectToolbarButton)
 -- toolbar:addButton(recentlyOpenedToolbarButton)
 
-return { toolbar = toolbar }
+return { toolbar = toolbar, switchToProjectToolbarButton = switchToProjectToolbarButton }

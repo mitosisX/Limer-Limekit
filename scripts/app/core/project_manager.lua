@@ -1,11 +1,13 @@
 --- Handles all creation, loading and opening of all projects
 
+local Paths = require "app.core.config.paths"
+local AppState = require "app.core.app_state"
 
 local ProjectManager = {}
-ProjectManager.PROJECTS_FOLDER = limekitProjectsFolder
+ProjectManager.PROJECTS_FOLDER = Paths.limekitProjectsFolder
 
 function ProjectManager.openProject()
-    local file = app.openFileDialog(limekitWindow, "Open a project", limekitProjectsFolder, {
+    local file = app.openFileDialog(limekitWindow, "Open a project", Paths.limekitProjectsFolder, {
         ["Limekit app"] = { ".json" }
     })
 
@@ -17,8 +19,12 @@ end
 -- This takes in the app.json file path for a project and proceeds to initalize it
 function ProjectManager.loadProject(projectFile)
     -- Initialize project structure
+
+    local fileFolderLocation = app.getDirName(projectFile) -- obtain full location of file (except the file name)
+    AppState.currentProjectPath = fileFolderLocation
+
     ProjectManager._projectData = {
-        folder = app.getDirName(projectFile),
+        folder = fileFolderLocation,
         json = json.parse(app.readFile(projectFile))
     }
 
@@ -33,14 +39,13 @@ function ProjectManager.loadProject(projectFile)
     ProjectManager._updateDirectoryTree()
 
     -- Enable project toolbar
-    switchToProjectToolbarButton:setEnabled(true)
+    Toolbar.switchToProjectToolbarButton:setEnabled(true)
+    -- switchToProjectToolbarButton:setEnabled(AppState.projectIsRunningfalse and true or false)
 end
 
 -- After reading the app.json file, the app properties are loaded into corresponding fileds
 function ProjectManager._updateUI(appTabInstance)
     local project = ProjectManager._projectData.json.project
-
-    print('***** ', project)
 
     -- Get references to the widgets through the AppTab API
     local propertyFields = appTabInstance.getPropertyFields()

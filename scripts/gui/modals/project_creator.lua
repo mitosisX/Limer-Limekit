@@ -2,8 +2,11 @@
 -- This creates a window for making new Limekit projects
 -- local json = require 'json'
 local Console = require "gui.views.console.console"
+local Paths = require "app.core.config.paths"
+local ProjectManager = require "app.core.project_manager"
 
 local ProjectCreator = {}
+ProjectCreator.SELECTED_PROJECT_ICON = nil
 
 function ProjectCreator.show()
     --------------------------------------------
@@ -79,7 +82,7 @@ function ProjectCreator.show()
     form_layout:setMargins(10, 0, 0, 0) -- Add some spacing
 
     -- Project Icon Preview
-    local icon_preview = Image(images('homepage/create_project/package.png'))
+    local icon_preview = Image(images('create_project/package.png'))
     icon_preview:setImageAlignment('center')
     form_layout:addChild(icon_preview)
 
@@ -106,7 +109,7 @@ function ProjectCreator.show()
     form_layout:addChild(icon_label)
 
     local icon_button = Label()
-    icon_button:setImage(images('homepage/create_project/pick_image.png'))
+    icon_button:setImage(images('create_project/icon.png'))
     icon_button:setCursor('pointinghand') -- Shows hand cursor on hover
 
     -- When clicked, opens file dialog to pick an image
@@ -119,9 +122,9 @@ function ProjectCreator.show()
         )
 
         if icon_path ~= nil then
-            icon_path = app.normalPath(icon_path)
+            ProjectCreator.SELECTED_PROJECT_ICON = app.normalPath(icon_path)
 
-            icon_button:setImage(icon_path)
+            icon_button:setImage(ProjectCreator.SELECTED_PROJECT_ICON)
             icon_button:resizeImage(50, 50)
         end
     end)
@@ -146,8 +149,19 @@ function ProjectCreator.show()
             version = "1.0" -- Default if empty
         end
 
+        if ProjectCreator.SELECTED_PROJECT_ICON == nil then
+            question = app.questionAlertDialog(limekitWindow, "Heads up!",
+                "You have not selected an icon for your app, use default icon?")
+
+            if question then
+                ProjectCreator.SELECTED_PROJECT_ICON = images('app/lime.png')
+            else
+                return
+            end
+        end
+
         -- Actually create the project (see next function)
-        ProjectCreator.create_project_files(project_name, version, icon_button:getImagePath())
+        ProjectCreator.create_project_files(project_name, version, ProjectCreator.SELECTED_PROJECT_ICON)
     end)
     form_layout:addChild(create_button)
 
@@ -160,10 +174,8 @@ function ProjectCreator.show()
     --------------------------------------------
     function ProjectCreator.create_project_files(name, version, icon_path)
         -- Create project folder path
-        local projects_folder = app.joinPaths(
-            app.getStandardPath('documents'),
-            "limekit projects"
-        )
+        local projects_folder = Paths.limekitProjectsFolder
+
         local project_folder = app.joinPaths(projects_folder, name)
 
         -- Check if project exists
@@ -215,14 +227,15 @@ function ProjectCreator.show()
         -- write the require (package.path) file
         app.createFile(app.joinPaths(project_folder, '.require'))
 
+        local appJSON = app.joinPaths(project_folder, "app.json")
         -- Write the config file
         app.writeFile(
-            app.joinPaths(project_folder, "app.json"),
+            appJSON,
             json_formatted
         )
 
         -- Copy the icon if one was selected
-        if icon_path ~= "" and icon_path ~= "" then
+        if icon_path ~= "" then
             app.copyFile(
                 icon_path,
                 app.joinPaths(project_folder, "images", "app.png")
@@ -239,7 +252,7 @@ function ProjectCreator.show()
 
 
         -- Open the new project
-        -- require('app.managers.project').open(project_folder)
+        ProjectManager.loadProject(appJSON)
     end
 
     -- Show the modal window

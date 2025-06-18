@@ -1,5 +1,7 @@
 local AppTab = {}
--- local json = require 'json'
+
+local ProjectRunner = require "app.core.project_runner"
+local AppState = require "app.core.app_state"
 
 function AppTab.create()
     local self = {
@@ -7,6 +9,20 @@ function AppTab.create()
         contentLayout = VLayout(),
         propertyFields = {}
     }
+
+    ProjectRunner.init({
+        ui = {
+            updateRunState = function()
+                -- Update both button states
+                local isRunning = AppState.projectIsRunning
+                self.runButton:setText(isRunning and 'Stop' or 'Run')
+                self.runButton:setIcon(images(isRunning and 'app/stop.png' or 'app/run.png'))
+
+                -- Update progress bar
+                self.runProgress:setVisibility(isRunning)
+            end
+        }
+    })
 
     -- Initialize UI components
     function self:_initComponents()
@@ -19,7 +35,9 @@ function AppTab.create()
     -- App Info Section (Top part with icon and run button)
     function self:_createAppInfoSection()
         self.appInfoGroup = GroupBox()
-        DropShadow(self.appInfoGroup)
+
+        DropShadow(self.appInfoGroup) -- add small drop shadow to the card that holds the app info
+
         self.appInfoGroup:setMinWidth(500)
         self.appInfoGroup:setMaxWidth(500)
 
@@ -43,6 +61,13 @@ function AppTab.create()
         self.runButton = Button('Run')
         self.runButton:setResizeRule('fixed', 'fixed')
         self.runButton:setIcon(images('app/run.png'))
+        self.runButton:setOnClick(function()
+            if AppState.projectIsRunning then
+                ProjectRunner.stop()
+            else
+                ProjectRunner.run(AppState.currentProjectPath)
+            end
+        end)
 
         self.runProgress = ProgressBar()
         self.runProgress:setRange(0, 0)
@@ -181,13 +206,20 @@ function AppTab.create()
 
     return {
         view = self.mainLayout,
+        progress = {
+            show = function()
+                self.runProgress:setVisibility(true)
+            end,
+            hide = function()
+                self.runProgress:setVisibility(false)
+            end
+        },
         updateProjectInfo = function(projectData)
             self:_updateProjectDisplay(projectData)
         end,
         setRunHandler = function(handler)
             self.runButton:setOnClick(handler)
         end,
-
         getPropertyFields = function() return self.propertyFields end,
         getAppNameLabel = function() return self.appNameLabel end,
         getAppIcon = function() return self.appIcon end

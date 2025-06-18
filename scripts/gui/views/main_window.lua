@@ -1,11 +1,11 @@
 -- Main window setup
-json = require "json"
-require "app.core.config.paths"
-require 'app.core.theme'
+json             = require "json"
+Theme            = require 'app.core.theme'
+local Styles     = require "gui.styles.init"
 
 ProjectManager   = require "app.core.project_manager"
 local Menu       = require 'gui.menus.main'
-local Toolbar    = require 'gui.toolbars.main'
+Toolbar          = require 'gui.toolbars.main'
 Dockables        = require 'gui.dockables.init'
 AppTab           = require 'gui.tabs.app_tab'.create()
 local ConsoleTab = require 'gui.tabs.console'
@@ -22,6 +22,7 @@ limekitWindow:setOnShown(function()
     limekitWindow:maximize()
 
     -- fetchAllProjectsForUser() -- Fetch all projects for the user
+    ProjectManager.listAvailableProjects()
 end)
 
 -- Setup main layout and components
@@ -41,7 +42,6 @@ limekitWindow:addDockable(Dockables.pyUtilsDock, 'left')
 limekitWindow:addDockable(Dockables.appFolderDock.appFolderDock, 'right')
 limekitWindow:addDockable(Dockables.userProjectsListDock.userProjectsListDock, 'right')
 
-ProjectManager.listAvailableProjects()
 
 -- Setup main view
 homeStackedWidget:addLayout(Welcome.create())
@@ -53,5 +53,7 @@ homeStackedWidget:addChild(appTab)
 homescreenSplitter:addChild(homeStackedWidget)
 homescreenSplitter:addChild(ConsoleTab.consoleTab)
 limekitWindow:setMainChild(homescreenSplitter)
+
+Styles.applyProjectListBoxStyles(Theme.currentTheme)
 
 return limekitWindow

@@ -1,31 +1,32 @@
 local AboutPage = require "gui.modals.about"
 local ProjectCreator = require "gui.modals.project_creator"
 local Navigation = require "gui.navigation"
+local Theme = require "app.core.theme"
 
 -- function that handles changing of themes
-function switchLightOrDark(menuitem)
-    theme_ = menuitem:getText() -- gets the text available on the button clicked
+-- function switchLightOrDark(menuitem)
+--     theme_ = menuitem:getText() -- gets the text available on the button clicked
 
-    if theme_ == 'Light' then
-        theme:setTheme('light')
-        menuitem:setText('Dark')
-        menuitem:setIcon(images('app/dark.png')) -- corresponding icon for dark theme
-        currentTheme = 'light'
+--     if theme_ == 'Light' then
+--         theme:setTheme('light')
+--         menuitem:setText('Dark')
+--         menuitem:setIcon(images('app/dark.png')) -- corresponding icon for dark theme
+--         currentTheme = 'light'
 
-        setUserProjectsListTheme()
+--         setUserProjectsListTheme()
 
-        appTabsLightTheme()
-    elseif theme_ == 'Dark' then
-        theme:setTheme('dark')
-        menuitem:setText('Light')
-        menuitem:setIcon(images('app/light.png')) -- corresponding icon for light theme
-        currentTheme = 'dark'
+--         appTabsLightTheme()
+--     elseif theme_ == 'Dark' then
+--         theme:setTheme('dark')
+--         menuitem:setText('Light')
+--         menuitem:setIcon(images('app/light.png')) -- corresponding icon for light theme
+--         currentTheme = 'dark'
 
-        setUserProjectsListTheme()
+--         setUserProjectsListTheme()
 
-        appTabsDarkTheme()
-    end
-end
+--         appTabsDarkTheme()
+--     end
+-- end
 
 -- The menu items template
 local appMenubarItems = {
@@ -38,7 +39,6 @@ local appMenubarItems = {
                 icon = images('toolbar/new_project.png'),
                 shortcut = "Ctrl+N",
                 click = ProjectCreator.show
-
             }, {
             label = 'Open Project',
             icon = images('toolbar/open_project.png'),
@@ -73,7 +73,7 @@ local appMenubarItems = {
                     name = 'light_theme',
                     label = 'Dark',
                     icon = images('app/dark.png'),
-                    click = switchLightOrDark
+                    click = Theme.toggleTheme
                 }
             }
         }
