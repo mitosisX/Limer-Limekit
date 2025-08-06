@@ -191,15 +191,9 @@ function ProjectCreator.show()
         app.createFolder(app.joinPaths(project_folder, "misc"))
 
         -- Create basic project files
-        local main_lua = [[
-            -- Welcome to your new Limekit project!
-            local window = Window{
-                title = "]] .. name .. [[ - Limekit",
-                icon = images('app.png'),
-                size = {800, 600}
-            }
-            window:show()
-        ]]
+        local main_lua =
+        "-- Welcome to the new era for modern lua gui development\n\nwindow = Window{title='New app - Limekit', icon = images('app.png'), size={400, 400}}\nwindow:show()"
+
 
         -- Write the main.lua file
         app.writeFile(

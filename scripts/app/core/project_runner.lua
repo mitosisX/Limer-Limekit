@@ -1,5 +1,6 @@
 local AppState = require "app.core.app_state"
 
+
 local ProjectRunner = {
     process = nil
 }
@@ -14,6 +15,7 @@ function ProjectRunner.run(projectPath)
         Console.error("Project is already running")
         return
     end
+
 
     Console.clear()
     ProjectRunner.process = app.runProject(projectPath)
@@ -47,9 +49,16 @@ function ProjectRunner.stop()
     end
 end
 
+function ProjectRunner.start()
+    if AppState.projectIsRunning then
+        ProjectRunner.stop()
+    else
+        ProjectRunner.run(AppState.activeProjectPath)
+    end
+end
+
 -- Helper functions
 function ProjectRunner._handleStart(projectPath)
-    -- ProjectRunner.ui.updateRunState('running')
     Console.log("Starting project...")
 end
 
@@ -62,9 +71,6 @@ function ProjectRunner._handleOutput(data)
 end
 
 function ProjectRunner._handleStop()
-    -- ProjectRunner.ui.updateRunState('stopped', exitCode)
-    -- ProjectRunner.console.log("Project stopped")
-
     ProjectRunner.process = nil
     Console.log("Project stopped")
 end

@@ -3,10 +3,19 @@
 local Paths = require "app.core.config.paths"
 local AppState = require "app.core.app_state"
 
+local PropertiesTab = require "gui.tabs.properties_tab";
+
 local ProjectManager = {}
 ProjectManager.PROJECTS_FOLDER = Paths.limekitProjectsFolder
+ProjectManager.PROJECT_CONFIG = nil -- all the data in the app.json file
 
 function ProjectManager.openProject()
+    if AppState.projectIsRunning then
+        app.criticalAlertDialog(limekitWindow, "Error!",
+            "Please stop the app first before opening another project")
+        return
+    end
+
     local file = app.openFileDialog(limekitWindow, "Open a project", Paths.limekitProjectsFolder, {
         ["Limekit app"] = { ".json" }
     })
@@ -21,11 +30,12 @@ function ProjectManager.loadProject(projectFile)
     -- Initialize project structure
 
     local fileFolderLocation = app.getDirName(projectFile) -- obtain full location of file (except the file name)
-    AppState.currentProjectPath = fileFolderLocation
+    AppState.activeProjectPath = fileFolderLocation
+    ProjectManager.PROJECT_CONFIG = json.parse(app.readFile(projectFile))
 
     ProjectManager._projectData = {
         folder = fileFolderLocation,
-        json = json.parse(app.readFile(projectFile))
+        json = ProjectManager.PROJECT_CONFIG
     }
 
     -- Set up paths
@@ -40,6 +50,9 @@ function ProjectManager.loadProject(projectFile)
 
     -- Enable project toolbar
     Toolbar.switchToProjectToolbarButton:setEnabled(true)
+
+    PropertiesTab.refresh()
+
     -- switchToProjectToolbarButton:setEnabled(AppState.projectIsRunningfalse and true or false)
 end
 

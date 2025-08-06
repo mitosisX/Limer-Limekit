@@ -1,4 +1,4 @@
-appTabLightStyle = [[
+local PROJECT_TAB_LIGHT_THEME = [[
 Tab {
     background: white;
     border: none;
@@ -49,7 +49,7 @@ Tab::pane {
 }
 ]]
 
-appTabDarkStyle = [[
+local PROJECT_TAB_DARK_THEME = [[
 /* Tab Widget */
 Tab {
     background: #2d2d2d;
@@ -100,3 +100,5 @@ Tab::pane {
     margin-top: -1px;  /* Align with tab bar */
 }
 ]]
+
+return { PROJECT_TAB_LIGHT_THEME = PROJECT_TAB_LIGHT_THEME, PROJECT_TAB_DARK_THEME = PROJECT_TAB_DARK_THEME }

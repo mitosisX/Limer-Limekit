@@ -1,10 +1,10 @@
 local AppTab = {}
 
-local ProjectRunner = require "app.core.project_runner"
 local AppState = require "app.core.app_state"
 
 function AppTab.create()
     local self = {
+        view = Container(),
         mainLayout = VLayout(),
         contentLayout = VLayout(),
         propertyFields = {}
@@ -26,6 +26,7 @@ function AppTab.create()
 
     -- Initialize UI components
     function self:_initComponents()
+        self.view:setLayout(self.mainLayout)
         self.mainLayout:setContentAlignment('vcenter', 'center')
         self:_createAppInfoSection()
         self:_createPropertiesSection()
@@ -65,7 +66,7 @@ function AppTab.create()
             if AppState.projectIsRunning then
                 ProjectRunner.stop()
             else
-                ProjectRunner.run(AppState.currentProjectPath)
+                ProjectRunner.run(AppState.activeProjectPath)
             end
         end)
 
@@ -132,6 +133,15 @@ function AppTab.create()
 
         self.revertButton = Button('Revert')
         self.revertButton:setIcon(images('homepage/create_project/cancel.png'))
+        self.revertButton:setOnClick(function()
+            local confirm = app.questionAlertDialog(limekitWindow, 'Confirm Revert',
+                'Are you sure you want to revert all modifications?')
+
+            if confirm then
+                local appConfig = app.joinPaths(AppState.activeProjectPath, 'app.json')
+                ProjectManager.loadProject(appConfig)
+            end
+        end)
 
         self.buttonLayout:addChild(self.saveButton)
         self.buttonLayout:addChild(self.revertButton)
@@ -141,7 +151,7 @@ function AppTab.create()
 
     -- Save button handler
     function self:_onSaveClicked()
-        local confirm = app.questionAlertDialog(limekitWindow, 'Confirm',
+        local confirm = app.questionAlertDialog(limekitWindow, 'Confirm Save',
             'Are you sure you want to save the modifications?')
 
         if confirm then
@@ -155,12 +165,15 @@ function AppTab.create()
                 email = self.propertyFields.email:getText()
             }
 
+            ProjectManager.PROJECT_CONFIG.project = updatedProject
+
             -- Save to file
             local success, err = pcall(function()
                 -- Pretty-print JSON
-                local formatedJSON = app.formatJSON(json.stringify(updatedProject))
+                local formatedJSON = app.formatJSON(json.stringify(ProjectManager.PROJECT_CONFIG))
+
                 app.writeFile(
-                    app.joinPaths(userProjectFolder, 'app.json'), formatedJSON
+                    app.joinPaths(AppState.activeProjectPath, 'app.json'), formatedJSON
                 )
             end)
 
@@ -205,7 +218,7 @@ function AppTab.create()
     self:_initComponents()
 
     return {
-        view = self.mainLayout,
+        view = self.view,
         progress = {
             show = function()
                 self.runProgress:setVisibility(true)

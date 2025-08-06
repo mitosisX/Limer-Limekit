@@ -2,6 +2,7 @@ local AboutPage = require "gui.modals.about"
 local ProjectCreator = require "gui.modals.project_creator"
 local Navigation = require "gui.navigation"
 local Theme = require "app.core.theme"
+local AppState = require "app.core.app_state"
 
 -- function that handles changing of themes
 -- function switchLightOrDark(menuitem)
@@ -11,7 +12,7 @@ local Theme = require "app.core.theme"
 --         theme:setTheme('light')
 --         menuitem:setText('Dark')
 --         menuitem:setIcon(images('app/dark.png')) -- corresponding icon for dark theme
---         currentTheme = 'light'
+--        activeTheme = 'light'
 
 --         setUserProjectsListTheme()
 
@@ -20,7 +21,7 @@ local Theme = require "app.core.theme"
 --         theme:setTheme('dark')
 --         menuitem:setText('Light')
 --         menuitem:setIcon(images('app/light.png')) -- corresponding icon for light theme
---         currentTheme = 'dark'
+--        activeTheme = 'dark'
 
 --         setUserProjectsListTheme()
 
@@ -50,7 +51,7 @@ local appMenubarItems = {
             {
                 label = 'Exit',
                 icon = images('exit.png'),
-                click = function() app.exit() end
+                click = function() app.quit() end
             }
         }
     }, {
@@ -81,12 +82,21 @@ local appMenubarItems = {
 }, {
     label = "&App",
     submenu = {
-        { label = "Run", shortcut = "Ctrl+R", click = runApp }, {
+        {
+            label = "Run",
+            disabled = true,
+            shortcut = "Ctrl+R",
+            click = function()
+                if not AppState.projectIsRunning and AppState.activeProjectPath ~= nil then
+                    ProjectRunner:start()
+                end
+            end
+        }, {
         label = "Stop",
         shortcut = "Ctrl+X",
         click = function(obj)
-            if projectRunnerProcess then
-                projectRunnerProcess:stop()
+            if AppState.projectIsRunning then
+                ProjectRunner:stop()
             end
         end
     }, { label = "-" }

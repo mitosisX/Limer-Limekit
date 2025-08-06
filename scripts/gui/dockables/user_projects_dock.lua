@@ -1,9 +1,9 @@
 local Paths = require "app.core.config.paths"
-local Styles = require "gui.styles.init"
+local AppState = require "app.core.app_state"
 
 userProjectsList = ListBox()
 userProjectsList:setOnItemDoubleClick(function(sender, folder, index)
-    if projectIsRunning then
+    if AppState.projectIsRunning then
         app.criticalAlertDialog(limekitWindow, "Error!",
             "Please stop the app first before opening another project")
         return

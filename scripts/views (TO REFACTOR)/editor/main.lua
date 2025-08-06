@@ -1,3 +1,13 @@
+--[[
+                NOTE
+
+- The previous project code was a BIG mess, so I am still refactoring the it,
+that's why files are this, look spaghetti.
+
+]]
+
+
+
 currentTabIndex = 1
 stateLogic = {}
 

@@ -15,6 +15,5 @@ return {
     documentsFolder = Paths.documentsFolder,
     limekitProjectsFolder = Paths.limekitProjectsFolder,
     codeInjectionFolder = Paths.codeInjectionFolder,
-    codeInjectionFile = Paths.codeInjectionFile,
-    currentProjectFolder = Paths.currentProjectFolder
+    codeInjectionFile = Paths.codeInjectionFile
 }

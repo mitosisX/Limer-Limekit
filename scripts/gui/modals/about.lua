@@ -40,7 +40,7 @@ function aboutPage()
     aboutVersionTitle:setBold(true)
     aboutVersionTitle:setTextColor('white')
 
-    aboutVersion = Label('1.0 (wonder)\n')
+    aboutVersion = Label('1.0 (Debbie)\n')
     aboutVersion:setTextColor('white')
 
     gBLayo:addChild(aboutVersionTitle)
@@ -65,7 +65,7 @@ function aboutPage()
     gBLayo:addChild(title3)
     gBLayo:addChild(subTitle3)
 
-    title4 = Label('My github')
+    title4 = Label('github')
     title4:setBold(true)
     title4:setTextColor('white')
     subTitle4 = Label('mitosisx')

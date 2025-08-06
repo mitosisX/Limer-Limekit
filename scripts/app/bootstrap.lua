@@ -12,5 +12,3 @@ end
 
 app.setFontSize(APP_FONT_SIZE)
 styles.load()
-
-return true

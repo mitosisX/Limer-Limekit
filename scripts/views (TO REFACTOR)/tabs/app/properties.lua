@@ -17,7 +17,7 @@ pathsHeader = Label('package.path')
 pathsHeader:setTextAlignment('center')
 
 pathsList = ListBox()
-pathsList:addItem('default folders: misc & scripts') -- Only showing that the misc folder is automatically added to path
+pathsList:addItem('default folders: misc &&& scripts') -- Only showing that the misc folder is automatically added to path
 -- pathsList:addItem('default: scripts')
 
 
