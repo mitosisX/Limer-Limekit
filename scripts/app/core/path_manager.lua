@@ -9,7 +9,7 @@ function PathManager:load()
 
     if app.exists(self.pathsFile) then
         local content = app.readFile(self.pathsFile)
-        Console.log(content)
+        -- Console.log(content)
         PathManager.paths = app.splitString(content, '\n') or {}
     end
     return PathManager

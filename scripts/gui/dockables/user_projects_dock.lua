@@ -1,7 +1,7 @@
 local Paths = require "app.core.config.paths"
 local AppState = require "app.core.app_state"
 
-userProjectsList = ListBox()
+local userProjectsList = ListBox()
 userProjectsList:setOnItemDoubleClick(function(sender, folder, index)
     if AppState.projectIsRunning then
         app.criticalAlertDialog(limekitWindow, "Error!",
@@ -17,7 +17,7 @@ end)
 
 userProjectsList:setResizeRule('expanding', 'expanding')
 
-userProjectsListDock = Dockable("Your Projects")
+local userProjectsListDock = Dockable("Your Projects")
 userProjectsListDock:setChild(userProjectsList)
 
 return {

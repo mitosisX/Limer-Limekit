@@ -33,7 +33,6 @@ function PropertiesTab._setupPathsSection()
     -- Path List
     PropertiesTab.pathsList = ListBox()
     PropertiesTab.pathsList:addItem('default folders: misc & scripts')
-    -- PropertiesTab:_refreshPathList()
 
     -- Buttons
     local buttonGroup = HLayout()
@@ -100,7 +99,7 @@ function PropertiesTab._refreshPathList()
     PathManager:load()
     PropertiesTab.pathsList:clear()
     PropertiesTab.pathsList:addItem('default folders: misc & scripts')
-    -- print(PathManager:getPaths())
+
     for _, path in ipairs(PathManager:getPaths()) do
         PropertiesTab.pathsList:addItem(path)
     end
@@ -148,24 +147,13 @@ function PropertiesTab._onRemovePath()
 
     if question then
         local row = PropertiesTab.pathsList:getCurrentRow()
-
         if row == 0 then return end -- Skip default item
 
-        local path = PropertiesTab.pathsList:removeItem(row)
+        PropertiesTab.pathsList:removeItem(row)
         PathManager:removePath(row)
 
         Console.log("Removed from package.path: ")
     end
-end
-
-function PropertiesTab._onAddRoute()
-    -- Implementation for adding routes
-    -- (To be implemented based on your requirements)
-end
-
-function PropertiesTab._onRemoveRoute()
-    -- Implementation for removing routes
-    -- (To be implemented based on your requirements)
 end
 
 -- return {
