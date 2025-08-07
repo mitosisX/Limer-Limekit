@@ -17,14 +17,12 @@ There are 3 compressed files to download and use.
    - You shall use install.bat or install.sh to install the limekit-xx-py3-none-anyany.whl file
    - INSTALL THIS FIRST
      
-2. For Limer, simply extract contents from 
+2. For Limer, simply extract contents from Limer-Limekit.rar
+   - The "run" files only help in debugging (showing errors on the console), feel free to use the run.py too. 
 
 ## Running Apps
 
-You'll use the program called Limer (in Limer-Limekit.zip) to run all Limekit programs and all Limekit examples provided. Inside, you shall find two files (run.bat and run.sh),
-you shall use files on Windows and Linux (I don't have access to a Mac, so you can use the run.py for now)
-
-The "run" files only help in debuggind (showing errors on the console), feel free to use the run.py too.
+You'll use the app called Limer mentioned above to create and run all Limekit programs and all Limekit examples provided.
 
 ## DONE?
 
