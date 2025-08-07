@@ -19,7 +19,7 @@ local Welcome    = require 'gui.views.homepage.welcome'
 ProjectWorkspace = require "scripts.gui.components.project_tab_container".create()
 
 limekitWindow    = Window {
-    title = "Limer - Take bytes",
+    title = "Limer - Rézolu",
     icon = images('app/lemon.png'),
     -- size = { APP_WINDOW_WIDTH, APP_WINDOW_HEIGHT }
 }

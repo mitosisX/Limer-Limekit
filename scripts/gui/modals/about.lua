@@ -59,7 +59,7 @@ function aboutPage()
     title3 = Label('Company')
     title3:setBold(true)
     title3:setTextColor('white')
-    subTitle3 = Label('Take bytes\n')
+    subTitle3 = Label('Rézolu\n')
     subTitle3:setTextColor('white')
 
     gBLayo:addChild(title3)

@@ -6,7 +6,7 @@
 							|_____|_|_| |_| |_|\___|_|            |_|\__,_|\__,_| |___|____/|_____|
 
 
-			Copyright: Take bytes
+			Copyright: Rézolu
 			Chief Developer: Omega Msiska (github.com/mitosisx)
 
 		(Note: This source code is provided unobfuscated, commented and written in the simplest lua syntax possible
