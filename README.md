@@ -1,7 +1,14 @@
 Limekit is a framework developed in Python 3.10 that wraps around the PySide6 (Qt) framework.
 
-But, you don't need to learn Python AT ALL!!
+But, you don't need to learn Python AT ALL!! Only lua
 
-You'll use the program called Limer (in Limer.zip) to run all Limekit programs and all Limekit examples provided. Navigate to the Release section (to your right) and download a corresponding zip file for your OS (windows-only.zip or linux-only.zip), and open READ ME.txt for more info on how to install. This is the framework that does all the magic.
+## Running Apps
 
-The Limer.zip is the program for running your programs
+You'll use the program called Limer (in Limer-Limekit.zip) to run all Limekit programs and all Limekit examples provided. Inside, you shall find two files (run.bat and run.sh),
+you shall use files on Windows and Linux (I don't have access to a Mac, so you can use the run.py for now)
+
+The "run" files only help in debuggind (showing errors on the console), feel free to use the run.py too.
+
+## Where to Download
+
+Navigate to the Release section (to your right) and download the all the files in there (Limer-Limekit.zip, Limekit-xx-py3-none-anyany.whl) to get started
