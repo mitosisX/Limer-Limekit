@@ -11,6 +11,7 @@ function MainMenu.create()
     local ProjectCreator = require "gui.modals.project_creator"
     local ProjectManager = require "app.core.project_manager"
     local ProjectRunner = require "app.core.project_runner"
+    local BuildDialog = require "gui.modals.build_dialog"
     local AboutPage = require "gui.modals.about"
 
     local menubarItems = {
@@ -82,7 +83,18 @@ function MainMenu.create()
                         end
                     end
                 },
-                { label = "-" }
+                { label = "-" },
+                {
+                    label = "Build",
+                    shortcut = "Ctrl+B",
+                    click = function()
+                        if AppState.activeProjectPath ~= nil then
+                            BuildDialog.show()
+                        else
+                            app.alert(nil, "No Project", "Please load a project first")
+                        end
+                    end
+                }
             }
         },
         {

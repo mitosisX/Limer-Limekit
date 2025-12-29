@@ -16,5 +16,6 @@ return {
     'getProcesses', 'killProcess', 'getCPUCount', 'getUsers', 'getBatteryInfo',
     'getDiskPartitions', 'getDiskInfo', 'getBootTime', 'getMachineType',
     'getNetworkNodeName', 'getProcessorName', 'getPlatformName',
-    'getSystemRelease', 'getOSName', 'getOSRelease', 'getOSVersion'
+    'getSystemRelease', 'getOSName', 'getOSRelease', 'getOSVersion',
+    'runProject', 'buildProject'
 }
