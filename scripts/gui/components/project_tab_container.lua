@@ -1,36 +1,27 @@
+-- ProjectWorkspace Module
+-- Container for project-related tabs (Application, Properties)
+
 local ProjectWorkspace = {}
 
--- Module-level imports
-local PropertiesTab    = require "gui.tabs.properties_tab";
-PropertiesTab.create()
-
-function ProjectWorkspace.create()
+function ProjectWorkspace.create(appTab, propertiesTab)
     local self = {
-        _tabs = Tab()
+        tabs = Tab()
     }
 
-    -- Private initialization method
-    function self:_initTabs()
-        self._tabs:addTab(AppTab.view, "Application")
-        self._tabs:addTab(PropertiesTab.view, "Properties")
+    local function initTabs()
+        self.tabs:addTab(appTab.view, "Application")
+        self.tabs:addTab(propertiesTab.view, "Properties")
     end
 
-    -- Public method to access tab widget
-    function self:getView()
-        return self._tabs
-    end
-
-    -- Public method to get tab instance
-    function self:getTab(tabName)
-        return self._registeredTabs[tabName]
-    end
-
-    -- Initialize
-    self:_initTabs()
+    initTabs()
 
     return {
-        view = self:getView(),
-        tabs = self._tabs
+        view = self.tabs,
+        tabs = self.tabs,
+
+        getView = function()
+            return self.tabs
+        end
     }
 end
 

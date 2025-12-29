@@ -1,3 +1,6 @@
+-- Project Tabs Styles
+-- Theme styles for project tabs (light and dark themes)
+
 local PROJECT_TAB_LIGHT_THEME = [[
 Tab {
     background: white;

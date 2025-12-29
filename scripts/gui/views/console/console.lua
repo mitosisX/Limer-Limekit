@@ -1,30 +1,46 @@
--- Console implementation
-Console = {}
-local view = Container()
-Console.view = view
+-- Console Module
+-- Provides logging functionality for the application
 
-local consoLay = VLayout()
-Console.logConsole = TextField()
-Console.logConsole:setReadOnly(true)
+local Console = {}
 
-consoLay:addChild(Console.logConsole)
-Console.view:setLayout(consoLay)
+function Console.create()
+    local self = {
+        view = Container(),
+        logConsole = TextField()
+    }
 
-function Console.log(message)
-    Console.logConsole:appendText(">> " .. message)
-end
+    local function initUI()
+        local consoleLayout = VLayout()
+        self.logConsole:setReadOnly(true)
+        consoleLayout:addChild(self.logConsole)
+        self.view:setLayout(consoleLayout)
+    end
 
--- Blue for all stdout
-function Console.logstream(message)
-    Console.logConsole:appendText(">> <span style='color:blue;'>" .. message .. '</span>')
-end
+    initUI()
 
-function Console.clear()
-    Console.logConsole:setText("")
-end
+    return {
+        view = self.view,
 
-function Console.error(message)
-    Console.logConsole:appendText(">> <span style='color:red;'>" .. message .. '</span>')
+        log = function(message)
+            self.logConsole:appendText(">> " .. message)
+        end,
+
+        logstream = function(message)
+            self.logConsole:appendText(">> <span style='color:blue;'>" .. message .. '</span>')
+        end,
+
+        error = function(message)
+            self.logConsole:appendText(">> <span style='color:red;'>" .. message .. '</span>')
+        end,
+
+        clear = function()
+            self.logConsole:setText("")
+        end,
+
+        getView = function()
+            return self.view
+        end
+    }
 end
 
 return Console

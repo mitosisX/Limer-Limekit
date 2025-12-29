@@ -1,4 +1,5 @@
--- Holds themes for the ListBox that holds all user project
+-- User Projects Styles
+-- Theme styles for the projects list (light and dark themes)
 
 local PROJECT_LISTBOX_LIGHT = [[
 /* List widget styling */

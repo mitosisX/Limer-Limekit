@@ -1,26 +1,27 @@
-local AppState = require "app.core.app_state"
+-- ProjectRunner Module
+-- Handles project execution and process management
 
+local AppState = require "app.core.app_state"
+local App = require "app.core.app"
 
 local ProjectRunner = {
-    process = nil
+    process = nil,
+    ui = nil
 }
 
 function ProjectRunner.init(dependencies)
     ProjectRunner.ui = dependencies.ui
 end
 
--- Main execution function
 function ProjectRunner.run(projectPath)
     if AppState.projectIsRunning then
-        Console.error("Project is already running")
+        App.console.error("Project is already running")
         return
     end
 
-
-    Console.clear()
+    App.console.clear()
     ProjectRunner.process = app.runProject(projectPath)
 
-    -- Configure process handlers
     ProjectRunner.process:setOnProcessReadyRead(function(data)
         ProjectRunner._handleOutput(data)
     end)
@@ -29,7 +30,9 @@ function ProjectRunner.run(projectPath)
         ProjectRunner._handleStart(projectPath)
         AppState.projectIsRunning = true
 
-        ProjectRunner.ui.updateRunState()
+        if ProjectRunner.ui then
+            ProjectRunner.ui.updateRunState()
+        end
     end)
 
     ProjectRunner.process:setOnProcessFinished(function()
@@ -37,19 +40,21 @@ function ProjectRunner.run(projectPath)
         AppState.projectIsRunning = false
         ProjectRunner.process = nil
 
-        ProjectRunner.ui.updateRunState()
+        if ProjectRunner.ui then
+            ProjectRunner.ui.updateRunState()
+        end
     end)
 
     ProjectRunner.process:run()
 end
 
 function ProjectRunner.stop()
-    if AppState.projectIsRunning then
+    if AppState.projectIsRunning and ProjectRunner.process then
         ProjectRunner.process:stop()
     end
 end
 
-function ProjectRunner.start()
+function ProjectRunner.toggle()
     if AppState.projectIsRunning then
         ProjectRunner.stop()
     else
@@ -57,22 +62,21 @@ function ProjectRunner.start()
     end
 end
 
--- Helper functions
 function ProjectRunner._handleStart(projectPath)
-    Console.log("Starting project...")
+    App.console.log("Starting project...")
 end
 
 function ProjectRunner._handleOutput(data)
     if string.find(data, 'Error:') or string.find(data, 'ython>"]') then
-        Console.error(data)
+        App.console.error(data)
     else
-        Console.logstream(data)
+        App.console.logstream(data)
     end
 end
 
 function ProjectRunner._handleStop()
     ProjectRunner.process = nil
-    Console.log("Project stopped")
+    App.console.log("Project stopped")
 end
 
 return ProjectRunner

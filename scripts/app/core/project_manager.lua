@@ -1,22 +1,25 @@
---- Handles all creation, loading and opening of all projects
+-- ProjectManager Module
+-- Handles all creation, loading and opening of all projects
 
+local json = require "json"
 local Paths = require "app.core.config.paths"
 local AppState = require "app.core.app_state"
+local App = require "app.core.app"
 
-local PropertiesTab = require "gui.tabs.properties_tab";
-
-local ProjectManager = {}
-ProjectManager.PROJECTS_FOLDER = Paths.limekitProjectsFolder
-ProjectManager.PROJECT_CONFIG = nil -- all the data in the app.json file
+local ProjectManager = {
+    PROJECTS_FOLDER = Paths.limekitProjectsFolder,
+    PROJECT_CONFIG = nil,
+    _projectData = nil
+}
 
 function ProjectManager.openProject()
     if AppState.projectIsRunning then
-        app.criticalAlertDialog(limekitWindow, "Error!",
+        app.criticalAlertDialog(App.window, "Error!",
             "Please stop the app first before opening another project")
         return
     end
 
-    local file = app.openFileDialog(limekitWindow, "Open a project", Paths.limekitProjectsFolder, {
+    local file = app.openFileDialog(App.window, "Open a project", Paths.limekitProjectsFolder, {
         ["Limekit app"] = { ".json" }
     })
 
@@ -25,11 +28,8 @@ function ProjectManager.openProject()
     end
 end
 
--- This takes in the app.json file path for a project and proceeds to initalize it
 function ProjectManager.loadProject(projectFile)
-    -- Initialize project structure
-
-    local fileFolderLocation = app.getDirName(projectFile) -- obtain full location of file (except the file name)
+    local fileFolderLocation = app.getDirName(projectFile)
     AppState.activeProjectPath = fileFolderLocation
     ProjectManager.PROJECT_CONFIG = json.parse(app.readFile(projectFile))
 
@@ -38,44 +38,36 @@ function ProjectManager.loadProject(projectFile)
         json = ProjectManager.PROJECT_CONFIG
     }
 
-    -- Set up paths
     ProjectManager._projectData.scripts = app.joinPaths(ProjectManager._projectData.folder, 'scripts')
     ProjectManager._projectData.images = app.joinPaths(ProjectManager._projectData.folder, 'images')
     ProjectManager._projectData.misc = app.joinPaths(ProjectManager._projectData.folder, 'misc')
 
-    -- Update UI
-    homeStackedWidget:slideNext()
-    ProjectManager._updateUI(AppTab)
+    App.homeStackedWidget:slideNext()
+    ProjectManager._updateUI(App.appTab)
     ProjectManager._updateDirectoryTree()
 
-    -- Enable project toolbar
-    Toolbar.switchToProjectToolbarButton:setEnabled(true)
+    App.toolbar.switchToProjectToolbarButton:setEnabled(true)
 
-    PropertiesTab.refresh()
-
-    -- switchToProjectToolbarButton:setEnabled(AppState.projectIsRunningfalse and true or false)
+    if App.propertiesTab and App.propertiesTab.refresh then
+        App.propertiesTab.refresh()
+    end
 end
 
--- After reading the app.json file, the app properties are loaded into corresponding fileds
 function ProjectManager._updateUI(appTabInstance)
     local project = ProjectManager._projectData.json.project
 
-    -- Get references to the widgets through the AppTab API
     local propertyFields = appTabInstance.getPropertyFields()
     local appNameLabel = appTabInstance.getAppNameLabel()
     local appIcon = appTabInstance.getAppIcon()
 
-    -- Update form fields
     appNameLabel:setText(string.format('App: <strong>%s</strong>', project.name))
 
-    -- Update all property fields
     for key, widget in pairs(propertyFields) do
         if project[key] then
             widget:setText(project[key])
         end
     end
 
-    -- Update icon
     local iconPath = app.joinPaths(ProjectManager._projectData.images, 'app.png')
     if app.exists(iconPath) then
         appIcon:setImage(iconPath)
@@ -83,9 +75,8 @@ function ProjectManager._updateUI(appTabInstance)
     end
 end
 
--- The project directory is updated upon every project init
 function ProjectManager._updateDirectoryTree()
-    local appDirectoryTree = Dockables.appFolderDock.appProjectDirTree
+    local appDirectoryTree = App.dockables.appFolderDock.appProjectDirTree
     appDirectoryTree:clear()
 
     ProjectManager._showDirectory(appDirectoryTree, ProjectManager._projectData.folder)
@@ -95,7 +86,6 @@ function ProjectManager._showDirectory(treeView, path)
     local folders = {}
     local files = {}
 
-    -- Separate folders and files
     for _, entry in ipairs(app.listFolder(path)) do
         local fullPath = app.joinPaths(path, entry)
         if app.isFolder(fullPath) then
@@ -105,16 +95,14 @@ function ProjectManager._showDirectory(treeView, path)
         end
     end
 
-    -- Add folders first
     for _, folder in ipairs(folders) do
-        local item = ProjectManager.createTreeItem(folder[1], limekitWindow:getStandardIcon('SP_DirIcon'))
+        local item = ProjectManager.createTreeItem(folder[1], App.window:getStandardIcon('SP_DirIcon'))
         treeView:addRow(item)
         ProjectManager._showDirectory(item, folder[2])
     end
 
-    -- Then add files
     for _, file in ipairs(files) do
-        local item = ProjectManager.createTreeItem(file[1], limekitWindow:getStandardIcon('SP_FileIcon'))
+        local item = ProjectManager.createTreeItem(file[1], App.window:getStandardIcon('SP_FileIcon'))
         treeView:addRow(item)
     end
 end
@@ -122,24 +110,17 @@ end
 function ProjectManager.createTreeItem(name, icon)
     local treeItem = TreeViewItem(name)
     treeItem:setEditable(false)
-
     treeItem:setIcon(icon)
-    -- item.setData({
-    --     'full_path': f"/project/{name}",
-    --     'last_modified': "2023-11-15"
-    -- }, Qt.UserRole)
     return treeItem
 end
 
--- Loads all user projects to the screen
 function ProjectManager.listAvailableProjects()
     local projects = ProjectManager._getVisibleProjectFolders()
-    Dockables.userProjectsListDock.userProjectsList:addItems(projects)
+    App.dockables.userProjectsListDock.userProjectsList:addItems(projects)
 end
 
 function ProjectManager._getVisibleProjectFolders()
     local projectItems = app.listFolder(ProjectManager.PROJECTS_FOLDER)
-
     local projectFolders = {}
 
     for _, item in ipairs(projectItems) do
@@ -156,7 +137,6 @@ function ProjectManager._isValidProjectFolder(itemName)
     return app.isFolder(fullPath) and not ProjectManager._isHiddenFolder(itemName)
 end
 
--- ignore all hidden directory
 function ProjectManager._isHiddenFolder(folderName)
     return folderName:sub(1, 1) == '.'
 end

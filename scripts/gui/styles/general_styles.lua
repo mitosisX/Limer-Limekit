@@ -1,3 +1,6 @@
+-- General Styles
+-- Application-wide CSS-like styles
+
 local GENERAL_STYLES = [[
 ListBox {
     selection-background-color: #3465a4;

@@ -1,17 +1,23 @@
+-- AppState Module
+-- Manages global application state
+
 local AppState = {
     projectIsRunning = false,
     activeProjectPath = nil
 }
 
--- Safe state modifier
 function AppState.setProjectRunning(isRunning, projectPath)
     AppState.projectIsRunning = isRunning
     AppState.activeProjectPath = projectPath or AppState.activeProjectPath
 end
 
--- State check
-function AppState.isProjectRunning()
+function AppState.getProjectRunning()
     return AppState.projectIsRunning, AppState.activeProjectPath
+end
+
+function AppState.reset()
+    AppState.projectIsRunning = false
+    AppState.activeProjectPath = nil
 end
 
 return AppState

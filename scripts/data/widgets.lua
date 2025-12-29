@@ -1,3 +1,6 @@
+-- Widgets Data
+-- Map of available Limekit widgets with their icons
+
 return {
     Button = images('widgets/Button.png'),
     ButtonGroup = images('widgets/ButtonGroup.png'),

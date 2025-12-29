@@ -1,89 +1,62 @@
-function aboutPage()
-    modal = Modal(limekitWindow, "About Limer")
+-- AboutPage Module
+-- Modal dialog showing application information
+
+local App = require "app.core.app"
+
+local AboutPage = {}
+
+function AboutPage.show()
+    local modal = Modal(App.window, "About Limer")
     modal:setMinSize(550, 400)
     modal:setMaxSize(550, 400)
 
-    createMainLayout = HLayout()
+    local mainLayout = HLayout()
 
-    groupB = GroupBox()
-    groupB:setBackgroundColor('#307DE1')
+    local groupBox = GroupBox()
+    groupBox:setBackgroundColor('#307DE1')
 
-    theGroupLay = HLayout()
+    local groupLayout = HLayout()
 
     local gifs = { 'homepage/sheep.gif', 'homepage/cat.gif' }
-    local randomIndex = math.random(1, #gifs)
-    local randomFruit = gifs[randomIndex]
+    local randomGif = gifs[math.random(#gifs)]
 
-    gi = GifPlayer(images(randomFruit))
-    gi:setSize(120, 120)
-    gi:setResizeRule('fixed', 'fixed')
-    gi:setMargins(90, 0, 0, 0)
+    local gifPlayer = GifPlayer(images(randomGif))
+    gifPlayer:setSize(120, 120)
+    gifPlayer:setResizeRule('fixed', 'fixed')
+    gifPlayer:setMargins(90, 0, 0, 0)
 
-    theGroupLay:addChild(gi)
+    groupLayout:addChild(gifPlayer)
+    groupLayout:addChild(VLine())
 
-    theGroupLay:addChild(VLine())
+    local infoLayout = VLayout()
+    infoLayout:setContentAlignment('center')
 
-    gBLayo = VLayout()
-    gBLayo:setContentAlignment('center')
+    local infoItems = {
+        { title = 'Name',           value = 'Limekit\n' },
+        { title = 'Version',        value = '1.0 (Debbie)\n' },
+        { title = 'Chief Developer', value = 'Omega Msiska\n' },
+        { title = 'Company',        value = 'Rézolu\n' },
+        { title = 'GitHub',         value = 'mitosisx' }
+    }
 
-    aboutNameTitle = Label('Name')
-    aboutNameTitle:setBold(true)
-    aboutNameTitle:setTextColor('white')
+    for _, item in ipairs(infoItems) do
+        local titleLabel = Label(item.title)
+        titleLabel:setBold(true)
+        titleLabel:setTextColor('white')
 
-    aboutName = Label('Limekit\n')
-    aboutName:setTextColor('white')
+        local valueLabel = Label(item.value)
+        valueLabel:setTextColor('white')
 
-    gBLayo:addChild(aboutNameTitle)
-    gBLayo:addChild(aboutName)
+        infoLayout:addChild(titleLabel)
+        infoLayout:addChild(valueLabel)
+    end
 
-    aboutVersionTitle = Label('Version')
-    aboutVersionTitle:setBold(true)
-    aboutVersionTitle:setTextColor('white')
+    groupLayout:addLayout(infoLayout)
+    groupBox:setLayout(groupLayout)
+    mainLayout:addChild(groupBox)
 
-    aboutVersion = Label('1.0 (Debbie)\n')
-    aboutVersion:setTextColor('white')
-
-    gBLayo:addChild(aboutVersionTitle)
-    gBLayo:addChild(aboutVersion)
-
-    aboutChiefTitle = Label('Chief Developer')
-    aboutChiefTitle:setBold(true)
-    aboutChiefTitle:setTextColor('white')
-
-    aboutChief = Label('Omega Msiska\n')
-    aboutChief:setTextColor('white')
-
-    gBLayo:addChild(aboutChiefTitle)
-    gBLayo:addChild(aboutChief)
-
-    title3 = Label('Company')
-    title3:setBold(true)
-    title3:setTextColor('white')
-    subTitle3 = Label('Rézolu\n')
-    subTitle3:setTextColor('white')
-
-    gBLayo:addChild(title3)
-    gBLayo:addChild(subTitle3)
-
-    title4 = Label('github')
-    title4:setBold(true)
-    title4:setTextColor('white')
-    subTitle4 = Label('mitosisx')
-    subTitle4:setTextColor('white')
-
-    gBLayo:addChild(title4)
-    gBLayo:addChild(subTitle4)
-
-    theGroupLay:addLayout(gBLayo)
-    groupB:setLayout(theGroupLay)
-    createMainLayout:addChild(groupB)
-
-    -- buttons = modal:getButtons({'ok', 'cancel'})
-    -- v:addChild(buttons)
-
-    modal:setLayout(createMainLayout)
-
+    modal:setLayout(mainLayout)
     modal:show()
 end
 
-return aboutPage
+return AboutPage

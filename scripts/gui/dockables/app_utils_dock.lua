@@ -1,12 +1,21 @@
-local appUtils = require("data/app_utils")
+-- AppUtilsDock Module
+-- Displays available app utility functions
 
-local appUtilsList = ListBox()
+local AppUtilsDock = {}
 
-for _, name in ipairs(appUtils) do
-    appUtilsList:addImageItem(name, images("widgets/method.png"))
+function AppUtilsDock.create()
+    local appUtils = require "data.app_utils"
+
+    local utilsList = ListBox()
+
+    for _, name in ipairs(appUtils) do
+        utilsList:addImageItem(name, images("widgets/method.png"))
+    end
+
+    local dock = Dockable("app utils")
+    dock:setChild(utilsList)
+
+    return dock
 end
 
-local appUtilsDock = Dockable("app utils")
-appUtilsDock:setChild(appUtilsList)
-
-return appUtilsDock
+return AppUtilsDock

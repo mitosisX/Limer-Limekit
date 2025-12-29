@@ -1,10 +1,5 @@
--- Core initialization
-projectRunnerProcess = nil
-userProjectJSON = nil
-userProjectFolder = ""
-requirePathFile = ""
-allRequirePathsTable = {}
-projectIsRunning = false
-userScriptsFolder = ""
-useImagesFolder = ""
-userMiscFolder = ""
+-- Core Module Exports
+-- This file is kept for backwards compatibility but is no longer needed
+-- All state is now managed through the App singleton (app/core/app.lua)
+
+return {}

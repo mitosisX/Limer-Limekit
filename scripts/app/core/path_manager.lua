@@ -1,47 +1,55 @@
+-- PathManager Module
+-- Manages package.path entries for projects
+
 local AppState = require "app.core.app_state"
 
 local PathManager = {
-    paths = {}
+    paths = {},
+    pathsFile = nil
 }
 
-function PathManager:load()
+function PathManager.load()
     PathManager.pathsFile = app.joinPaths(AppState.activeProjectPath, '.require')
 
-    if app.exists(self.pathsFile) then
-        local content = app.readFile(self.pathsFile)
-        -- Console.log(content)
+    if app.exists(PathManager.pathsFile) then
+        local content = app.readFile(PathManager.pathsFile)
         PathManager.paths = app.splitString(content, '\n') or {}
+    else
+        PathManager.paths = {}
     end
+
     return PathManager
 end
 
-function PathManager:save()
-    app.writeFile(PathManager.pathsFile, table.concat(PathManager.paths, '\n'))
+function PathManager.save()
+    if PathManager.pathsFile then
+        app.writeFile(PathManager.pathsFile, table.concat(PathManager.paths, '\n'))
+    end
 end
 
-function PathManager:addPath(path)
+function PathManager.addPath(path)
     path = app.normalPath(path)
-
     table.insert(PathManager.paths, path)
-
-    PathManager:save()
+    PathManager.save()
 end
 
-function PathManager:removePath(index)
+function PathManager.removePath(index)
     if index < 1 or index > #PathManager.paths then
-        return false, "Invalid index"
+        return false
     end
 
     table.remove(PathManager.paths, index)
-    PathManager:save()
-    table.insert(PathManager.paths, index, PathManager.paths[index])
+    PathManager.save()
+    return true
 end
 
-function PathManager:getPaths()
-    return self.paths
+function PathManager.getPaths()
+    return PathManager.paths
 end
 
--- return self:load()
-
+function PathManager.clear()
+    PathManager.paths = {}
+    PathManager.pathsFile = nil
+end
 
 return PathManager

@@ -1,67 +1,93 @@
--- I know the code does not follow best code practices, especially the global variables
--- present in this code. Anyone willing to offer redesign is welcome
+-- MainWindow Module
+-- Application entry point - creates and wires all components together
 
-json             = require "json"
-Theme            = require 'app.core.theme'
-local Styles     = require "gui.styles.init"
-ProjectRunner    = require "app.core.project_runner"
--- AppState         = require "app.core.app_state"
+local App = require "app.core.app"
+local Styles = require "gui.styles.init"
+local Theme = require "app.core.theme"
+local ProjectManager = require "app.core.project_manager"
 
-ProjectManager   = require "app.core.project_manager"
-local Menu       = require 'gui.menus.main'
-Toolbar          = require 'gui.toolbars.toolbar'.create()
-Dockables        = require 'gui.dockables.init'
-AppTab           = require 'gui.tabs.app_tab'.create()
-CodeInjectorTab  = require "gui.views.codeinjection.injection".create()
-local DebugTab   = require "gui.tabs.debug_tab"
+local Console = require "gui.views.console.console"
+local CodeInjector = require "gui.views.codeinjection.injection"
+local AppTab = require "gui.tabs.app_tab"
+local PropertiesTab = require "gui.tabs.properties_tab"
+local DebugTab = require "gui.tabs.debug_tab"
+local ProjectWorkspace = require "gui.components.project_tab_container"
+local Dockables = require "gui.dockables.init"
+local MainToolbar = require "gui.toolbars.toolbar"
+local MainMenu = require "gui.menus.main"
+local WelcomeView = require "gui.views.homepage.welcome"
 
-local Welcome    = require 'gui.views.homepage.welcome'
-ProjectWorkspace = require "scripts.gui.components.project_tab_container".create()
+local MainWindow = {}
 
-limekitWindow    = Window {
-    title = "Limer - Rézolu",
-    icon = images('app/lemon.png'),
-    -- size = { APP_WINDOW_WIDTH, APP_WINDOW_HEIGHT }
-}
+function MainWindow.create()
+    local console = Console.create()
+    App.setConsole(console)
 
-limekitWindow:setStyle(Styles.GENERAL_STYLES)
+    local codeInjector = CodeInjector.create()
+    App.setCodeInjectorTab(codeInjector)
 
-limekitWindow:setOnShown(function()
-    limekitWindow:maximize()
+    local appTab = AppTab.create()
+    App.setAppTab(appTab)
 
-    ProjectManager.listAvailableProjects()
-end)
+    local propertiesTab = PropertiesTab.create()
+    App.setPropertiesTab(propertiesTab)
 
--- Setup main layout and components
-homeStackedWidget = SlidingStackedWidget()
-homeStackedWidget:setOrientation('vertical')
-homeStackedWidget:setAnimation('OutExpo')
+    local debugTab = DebugTab.create(console, codeInjector)
+    App.setDebugTab(debugTab)
 
-local homescreenSplitter = Splitter('vertical')
+    local projectWorkspace = ProjectWorkspace.create(appTab, propertiesTab)
+    App.setProjectWorkspace(projectWorkspace)
 
--- Add components to window
-limekitWindow:setMenubar(Menu.menubar)
-limekitWindow:addToolbar(Toolbar.toolbar)
-limekitWindow:addDockable(Dockables.widgetsDock, 'left')
-limekitWindow:addDockable(Dockables.appUtilsDock, 'left')
-limekitWindow:addDockable(Dockables.pyUtilsDock, 'left')
-limekitWindow:addDockable(Dockables.appFolderDock.appFolderDock, 'right')
-limekitWindow:addDockable(Dockables.userProjectsListDock.userProjectsListDock, 'right')
+    local dockables = Dockables.create()
+    App.setDockables(dockables)
 
--- Setup main view
-homeStackedWidget:addLayout(Welcome.create())
+    local toolbar = MainToolbar.create()
+    App.setToolbar(toolbar)
 
--- The Application and Properties tab, and all tabs accessible after opening a project
-homeStackedWidget:addChild(ProjectWorkspace.view)
+    local menu = MainMenu.create()
 
-homescreenSplitter:addChild(homeStackedWidget)
-homescreenSplitter:addChild(DebugTab.tabWidget)
--- homescreenSplitter:addChild(ConsoleTab.consoleTab)
--- homescreenSplitter:addChild(CodeInjectorTab.codeInjectionTab)
+    local window = Window {
+        title = "Limer - Rézolu",
+        icon = images('app/lemon.png')
+    }
+    App.setWindow(window)
 
+    window:setStyle(Styles.GENERAL_STYLES)
 
-limekitWindow:setMainChild(homescreenSplitter)
+    local homeStackedWidget = SlidingStackedWidget()
+    homeStackedWidget:setOrientation('vertical')
+    homeStackedWidget:setAnimation('OutExpo')
+    App.setHomeStackedWidget(homeStackedWidget)
 
-Styles.applyProjectListBoxStyles(Theme.activeTheme)
+    Theme.init(Styles)
 
-return limekitWindow
+    window:setMenubar(menu.menubar)
+    window:addToolbar(toolbar.toolbar)
+    window:addDockable(dockables.widgetsDock, 'left')
+    window:addDockable(dockables.appUtilsDock, 'left')
+    window:addDockable(dockables.pyUtilsDock, 'left')
+    window:addDockable(dockables.appFolderDock.appFolderDock, 'right')
+    window:addDockable(dockables.userProjectsListDock.userProjectsListDock, 'right')
+
+    homeStackedWidget:addLayout(WelcomeView.create())
+    homeStackedWidget:addChild(projectWorkspace.view)
+
+    local homescreenSplitter = Splitter('vertical')
+    homescreenSplitter:addChild(homeStackedWidget)
+    homescreenSplitter:addChild(debugTab.tabWidget)
+
+    window:setMainChild(homescreenSplitter)
+
+    window:setOnShown(function()
+        window:maximize()
+        ProjectManager.listAvailableProjects()
+    end)
+
+    Styles.applyProjectListBoxStyles(Theme.active)
+
+    App.markInitialized()
+
+    return window
+end
+
+return MainWindow

@@ -1,3 +1,6 @@
+-- App Utils Data
+-- List of available app utility functions
+
 return {
     'copyFile', 'isIDE', 'renameFolder', 'getFileExt', 'sortArray',
     'getStandardPath', 'sortTable', 'randomChoice', 'splitString', 'range',

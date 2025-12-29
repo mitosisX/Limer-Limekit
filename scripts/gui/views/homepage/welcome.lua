@@ -1,62 +1,51 @@
+-- WelcomeView Module
+-- Creates the home/welcome screen layout
+
 local WelcomeView = {}
 
-local ProjectCreator = require "gui.modals.project_creator"
--- local images = require 'app.utils.images'
--- local ProjectCreator = require 'app.modals.project_creator'
-
 function WelcomeView.create()
+    local ProjectCreator = require "gui.modals.project_creator"
+
     local layout = VLayout()
     layout:setContentAlignment('vcenter', 'center')
 
-    -- Add top spacing
     layout:addStretch()
 
-    -- Add animated GIF
-    local gif_paths = {
+    local gifPaths = {
         'homepage/sheep.gif',
         'homepage/cat.gif'
     }
 
-    local welcome_gif = GifPlayer(images(gif_paths[math.random(#gif_paths)]))
-    welcome_gif:setSize(120, 120)
-    layout:addChild(welcome_gif)
+    local welcomeGif = GifPlayer(images(gifPaths[math.random(#gifPaths)]))
+    welcomeGif:setSize(120, 120)
+    layout:addChild(welcomeGif)
 
-    -- Add title
     local title = Label('<strong>Limer</strong> -')
     title:setTextSize(32)
     layout:addChild(title)
 
-    -- Add feature cards
-    local features = WelcomeView.create_feature_cards()
+    local features = WelcomeView._createFeatureCards()
     layout:addLayout(features)
 
-    -- Add create project button
-    -- local create_btn = CommandButton('Create a project')
-    -- create_btn:setResizeRule('fixed', 'fixed')
-    -- -- create_btn:setOnClick(ProjectCreator.show)
-    -- layout:addChild(create_btn)
+    local commandLayout = HLayout()
+    commandLayout:setContentAlignment('right')
 
-    commandLay = HLayout()
-    commandLay:setContentAlignment('right')
+    local createProjectButton = CommandButton('Create a project')
+    createProjectButton:setResizeRule('fixed', 'fixed')
+    createProjectButton:setOnClick(ProjectCreator.show)
 
-    commandCreateProject = CommandButton('Create a project')
-    commandCreateProject:setResizeRule('fixed', 'fixed')
-    commandCreateProject:setOnClick(ProjectCreator.show)
+    commandLayout:addChild(createProjectButton)
+    layout:addLayout(commandLayout)
 
-    commandLay:addChild(commandCreateProject)
-
-    layout:addLayout(commandLay)
-
-    -- Add bottom spacing and footer
     layout:addStretch()
-    layout:addChild(WelcomeView.create_footer())
+    layout:addChild(WelcomeView._createFooter())
 
     return layout
 end
 
-function WelcomeView.create_feature_cards()
-    local features_layout = HLayout()
-    local feature_items = {
+function WelcomeView._createFeatureCards()
+    local featuresLayout = HLayout()
+    local featureItems = {
         { image = 'homepage/modern.png',   text = 'Develop modern UI' },
         { image = 'homepage/lua_logo.png', text = 'Developed in lua' },
         { image = 'homepage/hundred.png',  text = 'Free for everyone' },
@@ -65,22 +54,22 @@ function WelcomeView.create_feature_cards()
         { image = 'homepage/support.png',  text = '<strong>Support this project', highlight = true }
     }
 
-    for _, item in ipairs(feature_items) do
-        features_layout:addChild(WelcomeView.create_feature_card(
+    for _, item in ipairs(featureItems) do
+        featuresLayout:addChild(WelcomeView._createFeatureCard(
             images(item.image),
             item.text,
             item.highlight
         ))
     end
 
-    return features_layout
+    return featuresLayout
 end
 
-function WelcomeView.create_feature_card(image_path, text, highlight)
+function WelcomeView._createFeatureCard(imagePath, text, highlight)
     local card = GroupBox()
-    local card_layout = VLayout()
+    local cardLayout = VLayout()
 
-    local image = Image(image_path)
+    local image = Image(imagePath)
     image:setImageAlignment('center')
     image:resizeImage(80, 80)
 
@@ -92,14 +81,14 @@ function WelcomeView.create_feature_card(image_path, text, highlight)
         label:setTextColor('#307DE1')
     end
 
-    card_layout:addChild(image)
-    card_layout:addChild(label)
-    card:setLayout(card_layout)
+    cardLayout:addChild(image)
+    cardLayout:addChild(label)
+    card:setLayout(cardLayout)
 
     return card
 end
 
-function WelcomeView.create_footer()
+function WelcomeView._createFooter()
     local footer = Label('Built with LOVE from Malawi (warm heart of Africa)')
     footer:setBold(true)
     footer:setTextColor('#2979FF')

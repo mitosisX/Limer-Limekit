@@ -1,14 +1,29 @@
-local widgetMap = require "data/widgets"
+-- WidgetsDock Module
+-- Displays available Limekit widgets
 
-local widgetsList = ListBox()
-widgetsList:addImageItems(widgetMap)
+local WidgetsDock = {}
 
-local totalWidgets = "(" .. (function(t)
-    local c = 0; for _ in pairs(t) do c = c + 1 end; return c
-end)(widgetMap) .. ")"
+function WidgetsDock.create()
+    local widgetMap = require "data.widgets"
 
-local widgetsDock = Dockable("widgets " .. totalWidgets)
-widgetsDock:setMinWidth(300)
-widgetsDock:setChild(widgetsList)
+    local function countItems(t)
+        local count = 0
+        for _ in pairs(t) do
+            count = count + 1
+        end
+        return count
+    end
 
-return widgetsDock
+    local widgetsList = ListBox()
+    widgetsList:addImageItems(widgetMap)
+
+    local totalWidgets = "(" .. countItems(widgetMap) .. ")"
+
+    local dock = Dockable("widgets " .. totalWidgets)
+    dock:setMinWidth(300)
+    dock:setChild(widgetsList)
+
+    return dock
+end
+
+return WidgetsDock

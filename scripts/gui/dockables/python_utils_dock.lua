@@ -1,12 +1,21 @@
-local pythonUtils = require("data/python_utils")
+-- PythonUtilsDock Module
+-- Displays available Python utility functions
 
-pyUtilsList = ListBox()
+local PythonUtilsDock = {}
 
-for _, name in ipairs(pythonUtils) do
-    pyUtilsList:addImageItem(name, images("py.png"))
+function PythonUtilsDock.create()
+    local pythonUtils = require "data.python_utils"
+
+    local utilsList = ListBox()
+
+    for _, name in ipairs(pythonUtils) do
+        utilsList:addImageItem(name, images("py.png"))
+    end
+
+    local dock = Dockable("Python utils")
+    dock:setChild(utilsList)
+
+    return dock
 end
 
-pyUtilsDock = Dockable("Python utils")
-pyUtilsDock:setChild(pyUtilsList)
-
-return pyUtilsDock
+return PythonUtilsDock
