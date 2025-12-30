@@ -13,6 +13,7 @@ local App = {
     appTab = nil,
     propertiesTab = nil,
     codeInjectorTab = nil,
+    inspectorTab = nil,
     debugTab = nil,
     projectWorkspace = nil,
     console = nil,
@@ -53,6 +54,10 @@ end
 
 function App.setCodeInjectorTab(codeInjectorTab)
     App.codeInjectorTab = codeInjectorTab
+end
+
+function App.setInspectorTab(inspectorTab)
+    App.inspectorTab = inspectorTab
 end
 
 function App.setDebugTab(debugTab)

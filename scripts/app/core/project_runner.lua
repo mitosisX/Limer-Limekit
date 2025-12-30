@@ -33,6 +33,11 @@ function ProjectRunner.run(projectPath)
         if ProjectRunner.ui then
             ProjectRunner.ui.updateRunState()
         end
+
+        -- Notify inspector tab
+        if App.inspectorTab then
+            App.inspectorTab.onProjectStateChange(true)
+        end
     end)
 
     ProjectRunner.process:setOnProcessFinished(function()
@@ -42,6 +47,11 @@ function ProjectRunner.run(projectPath)
 
         if ProjectRunner.ui then
             ProjectRunner.ui.updateRunState()
+        end
+
+        -- Notify inspector tab
+        if App.inspectorTab then
+            App.inspectorTab.onProjectStateChange(false)
         end
     end)
 
