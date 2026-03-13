@@ -1,20 +1,16 @@
 -- ProjectWorkspace Module
--- Container for project-related tabs (Application, Properties, Inspector)
+-- Container for project-related tabs (Application, Properties)
 
 local ProjectWorkspace = {}
 
-function ProjectWorkspace.create(appTab, propertiesTab, inspectorTab)
+function ProjectWorkspace.create(appTab, propertiesTab)
     local self = {
-        tabs = Tab(),
-        inspectorTab = inspectorTab
+        tabs = Tab()
     }
 
     local function initTabs()
         self.tabs:addTab(appTab.view, "Application")
         self.tabs:addTab(propertiesTab.view, "Properties")
-        if inspectorTab then
-            self.tabs:addTab(inspectorTab.view, "Inspector")
-        end
     end
 
     initTabs()
@@ -22,14 +18,9 @@ function ProjectWorkspace.create(appTab, propertiesTab, inspectorTab)
     return {
         view = self.tabs,
         tabs = self.tabs,
-        inspectorTab = inspectorTab,
 
         getView = function()
             return self.tabs
-        end,
-
-        getInspectorTab = function()
-            return self.inspectorTab
         end
     }
 end

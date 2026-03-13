@@ -11,7 +11,6 @@ local CodeInjector = require "gui.views.codeinjection.injection"
 local AppTab = require "gui.tabs.app_tab"
 local PropertiesTab = require "gui.tabs.properties_tab"
 local DebugTab = require "gui.tabs.debug_tab"
-local InspectorTab = require "gui.views.inspector.inspector_tab"
 local ProjectWorkspace = require "gui.components.project_tab_container"
 local Dockables = require "gui.dockables.init"
 local MainToolbar = require "gui.toolbars.toolbar"
@@ -33,13 +32,10 @@ function MainWindow.create()
     local propertiesTab = PropertiesTab.create()
     App.setPropertiesTab(propertiesTab)
 
-    local inspectorTab = InspectorTab.create()
-    App.setInspectorTab(inspectorTab)
-
     local debugTab = DebugTab.create(console, codeInjector)
     App.setDebugTab(debugTab)
 
-    local projectWorkspace = ProjectWorkspace.create(appTab, propertiesTab, inspectorTab)
+    local projectWorkspace = ProjectWorkspace.create(appTab, propertiesTab)
     App.setProjectWorkspace(projectWorkspace)
 
     local dockables = Dockables.create()
