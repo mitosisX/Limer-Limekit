@@ -52,7 +52,9 @@ function MainWindow.create()
     }
     App.setWindow(window)
 
-    window:setStyle(Styles.GENERAL_STYLES)
+    -- ponytail: a window-level stylesheet overrides the darklight app palette → white widgets.
+    -- Fold these rules into the theme stylesheets if you want them back. See gui/styles/general_styles.lua.
+    -- window:setStyle(Styles.GENERAL_STYLES)
 
     local homeStackedWidget = SlidingStackedWidget()
     homeStackedWidget:setOrientation('vertical')
