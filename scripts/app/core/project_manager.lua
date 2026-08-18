@@ -82,10 +82,21 @@ function ProjectManager._updateDirectoryTree()
     local appDirectoryTree = App.dockables.appFolderDock.appProjectDirTree
     appDirectoryTree:clear()
 
-    ProjectManager._showDirectory(appDirectoryTree, ProjectManager._projectData.folder)
+    ProjectManager._showDirectory(appDirectoryTree, ProjectManager._projectData.folder, true)
 end
 
-function ProjectManager._showDirectory(treeView, path)
+-- `node` is the TreeView at the top level and a TreeViewItem below it. 1.x's
+-- addRow worked on both; 2.0 distinguishes them -- addTopItem puts a row on
+-- the tree, addChild nests it under an item -- so the caller says which.
+function ProjectManager._showDirectory(node, path, isRoot)
+    local function attach(item)
+        if isRoot then
+            node:addTopItem(item)
+        else
+            node:addChild(item)
+        end
+    end
+
     local folders = {}
     local files = {}
 
@@ -100,20 +111,20 @@ function ProjectManager._showDirectory(treeView, path)
 
     for _, folder in ipairs(folders) do
         local item = ProjectManager.createTreeItem(folder[1], App.window:getStandardIcon('SP_DirIcon'))
-        treeView:addRow(item)
-        ProjectManager._showDirectory(item, folder[2])
+        attach(item)
+        ProjectManager._showDirectory(item, folder[2], false)
     end
 
     for _, file in ipairs(files) do
         local item = ProjectManager.createTreeItem(file[1], App.window:getStandardIcon('SP_FileIcon'))
-        treeView:addRow(item)
+        attach(item)
     end
 end
 
 function ProjectManager.createTreeItem(name, icon)
     local treeItem = ui.TreeViewItem(name)
     treeItem:setEditable(false)
-    treeItem:setIcon(icon)
+    treeItem:setIcon(1, icon)
     return treeItem
 end
 
