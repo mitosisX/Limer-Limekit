@@ -12,5 +12,8 @@ if [ -d "venv" ]; then
     source venv/bin/activate
 fi
 
-# Run the application
-python3 -c "from limekit import runner"
+# Limer targets the Limekit 2.0 engine (app.json declares "api": "2.0").
+# The old `python3 -c "from limekit import runner"` starts the 1.x engine,
+# which injects flat globals and has no module system -- Limer would die on
+# its first require("limekit.ui").
+python3 -m limekit .

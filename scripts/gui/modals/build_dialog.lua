@@ -174,7 +174,7 @@ function BuildDialog.show()
     local config = loadAppConfig(AppState.activeProjectPath)
     local iconPath = getIconPath(AppState.activeProjectPath)
 
-    currentModal = ui.Modal(App.window, "Build Project")
+    currentModal = ui.Modal("Build Project", App.window)
     currentModal:setMinSize(600, 650)
 
     local mainLayout = ui.VLayout()

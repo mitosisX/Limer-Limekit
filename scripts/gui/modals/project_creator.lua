@@ -18,7 +18,7 @@ function ProjectCreator.show()
 
     ProjectCreator.selectedIcon = nil
 
-    local modal = ui.Modal(App.window, "Create New Project")
+    local modal = ui.Modal("Create New Project", App.window)
     modal:setMinSize(550, 400)
 
     local mainLayout = ui.HLayout()

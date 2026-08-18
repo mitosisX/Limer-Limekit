@@ -9,7 +9,7 @@ local App = require "app.core.app"
 local AboutPage = {}
 
 function AboutPage.show()
-    local modal = ui.Modal(App.window, "About Limer")
+    local modal = ui.Modal("About Limer", App.window)
     modal:setMinSize(550, 400)
     modal:setMaxSize(550, 400)
 
