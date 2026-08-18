@@ -1,6 +1,9 @@
 -- ProjectManager Module
 -- Handles all creation, loading and opening of all projects
 
+local ui  = require("limekit.ui")
+local fs  = require("limekit.fs")
+
 local json = require "json"
 local Paths = require "app.core.config.paths"
 local AppState = require "app.core.app_state"
@@ -14,33 +17,33 @@ local ProjectManager = {
 
 function ProjectManager.openProject()
     if AppState.projectIsRunning then
-        app.criticalAlertDialog(App.window, "Error!",
+        ui.Dialogs.critical(App.window, "Error!",
             "Please stop the app first before opening another project")
         return
     end
 
-    local file = app.openFileDialog(App.window, "Open a project", Paths.limekitProjectsFolder, {
+    local file = ui.Dialogs.openFile(App.window, "Open a project", Paths.limekitProjectsFolder, {
         ["Limekit app"] = { ".json" }
     })
 
     if file then
-        ProjectManager.loadProject(app.normalPath(file))
+        ProjectManager.loadProject(fs.FileSystem.normalPath(file))
     end
 end
 
 function ProjectManager.loadProject(projectFile)
-    local fileFolderLocation = app.getDirName(projectFile)
+    local fileFolderLocation = fs.FileSystem.getDirName(projectFile)
     AppState.activeProjectPath = fileFolderLocation
-    ProjectManager.PROJECT_CONFIG = json.parse(app.readFile(projectFile))
+    ProjectManager.PROJECT_CONFIG = json.parse(fs.FileSystem.readFile(projectFile))
 
     ProjectManager._projectData = {
         folder = fileFolderLocation,
         json = ProjectManager.PROJECT_CONFIG
     }
 
-    ProjectManager._projectData.scripts = app.joinPaths(ProjectManager._projectData.folder, 'scripts')
-    ProjectManager._projectData.images = app.joinPaths(ProjectManager._projectData.folder, 'images')
-    ProjectManager._projectData.misc = app.joinPaths(ProjectManager._projectData.folder, 'misc')
+    ProjectManager._projectData.scripts = fs.FileSystem.joinPaths(ProjectManager._projectData.folder, 'scripts')
+    ProjectManager._projectData.images = fs.FileSystem.joinPaths(ProjectManager._projectData.folder, 'images')
+    ProjectManager._projectData.misc = fs.FileSystem.joinPaths(ProjectManager._projectData.folder, 'misc')
 
     App.homeStackedWidget:slideNext()
     ProjectManager._updateUI(App.appTab)
@@ -68,10 +71,10 @@ function ProjectManager._updateUI(appTabInstance)
         end
     end
 
-    local iconPath = app.joinPaths(ProjectManager._projectData.images, 'app.png')
-    if app.exists(iconPath) then
+    local iconPath = fs.FileSystem.joinPaths(ProjectManager._projectData.images, 'app.png')
+    if fs.FileSystem.exists(iconPath) then
         appIcon:setImage(iconPath)
-        appIcon:resizeImage(50, 50)
+        appIcon:setImageSize(50, 50)
     end
 end
 
@@ -86,9 +89,9 @@ function ProjectManager._showDirectory(treeView, path)
     local folders = {}
     local files = {}
 
-    for _, entry in ipairs(app.listFolder(path)) do
-        local fullPath = app.joinPaths(path, entry)
-        if app.isFolder(fullPath) then
+    for _, entry in ipairs(fs.FileSystem.listFolder(path)) do
+        local fullPath = fs.FileSystem.joinPaths(path, entry)
+        if fs.FileSystem.isFolder(fullPath) then
             table.insert(folders, { entry, fullPath })
         else
             table.insert(files, { entry, fullPath })
@@ -108,7 +111,7 @@ function ProjectManager._showDirectory(treeView, path)
 end
 
 function ProjectManager.createTreeItem(name, icon)
-    local treeItem = TreeViewItem(name)
+    local treeItem = ui.TreeViewItem(name)
     treeItem:setEditable(false)
     treeItem:setIcon(icon)
     return treeItem
@@ -120,7 +123,7 @@ function ProjectManager.listAvailableProjects()
 end
 
 function ProjectManager._getVisibleProjectFolders()
-    local projectItems = app.listFolder(ProjectManager.PROJECTS_FOLDER)
+    local projectItems = fs.FileSystem.listFolder(ProjectManager.PROJECTS_FOLDER)
     local projectFolders = {}
 
     for _, item in ipairs(projectItems) do
@@ -133,8 +136,8 @@ function ProjectManager._getVisibleProjectFolders()
 end
 
 function ProjectManager._isValidProjectFolder(itemName)
-    local fullPath = app.joinPaths(ProjectManager.PROJECTS_FOLDER, itemName)
-    return app.isFolder(fullPath) and not ProjectManager._isHiddenFolder(itemName)
+    local fullPath = fs.FileSystem.joinPaths(ProjectManager.PROJECTS_FOLDER, itemName)
+    return fs.FileSystem.isFolder(fullPath) and not ProjectManager._isHiddenFolder(itemName)
 end
 
 function ProjectManager._isHiddenFolder(folderName)

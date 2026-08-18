@@ -1,6 +1,11 @@
 -- AppTab Module
 -- Main application properties tab with project info and run controls
 
+local ui  = require("limekit.ui")
+local fs  = require("limekit.fs")
+local res = require("limekit.res")
+local sys = require("limekit.sys")
+
 local json = require "json"
 local AppState = require "app.core.app_state"
 local App = require "app.core.app"
@@ -9,9 +14,9 @@ local AppTab = {}
 
 function AppTab.create()
     local self = {
-        view = Container(),
-        mainLayout = VLayout(),
-        contentLayout = VLayout(),
+        view = ui.Container(),
+        mainLayout = ui.VLayout(),
+        contentLayout = ui.VLayout(),
         propertyFields = {}
     }
 
@@ -22,35 +27,35 @@ function AppTab.create()
                 updateRunState = function()
                     local isRunning = AppState.projectIsRunning
                     self.runButton:setText(isRunning and 'Stop' or 'Run')
-                    self.runButton:setIcon(images(isRunning and 'app/stop.png' or 'app/run.png'))
-                    self.runProgress:setVisibility(isRunning)
+                    self.runButton:setIcon(res.Resources.images(isRunning and 'app/stop.png' or 'app/run.png'))
+                    self.runProgress:setVisible(isRunning)
                 end
             }
         })
     end
 
     local function createAppInfoSection()
-        self.appInfoGroup = GroupBox()
-        DropShadow(self.appInfoGroup)
+        self.appInfoGroup = ui.GroupBox()
+        ui.DropShadow(self.appInfoGroup)
         self.appInfoGroup:setMinWidth(500)
         self.appInfoGroup:setMaxWidth(500)
 
-        self.detailsGroup = GroupBox()
-        self.detailsLayout = HLayout()
+        self.detailsGroup = ui.GroupBox()
+        self.detailsLayout = ui.HLayout()
 
-        self.appIcon = Image(images('app/image.png'))
+        self.appIcon = ui.Image(res.Resources.images('app/image.png'))
         self.appIcon:setResizeRule('fixed', 'fixed')
-        self.appIcon:resizeImage(50, 50)
+        self.appIcon:setImageSize(50, 50)
 
-        self.detailsRightLayout = VLayout()
+        self.detailsRightLayout = ui.VLayout()
         self.detailsRightLayout:setContentAlignment('bottom')
 
-        self.appNameLabel = Label("App:")
-        self.osLabel = Label(string.format('Your OS: <strong>%s</strong>', app.getOSName()))
+        self.appNameLabel = ui.Label("App:")
+        self.osLabel = ui.Label(string.format('Your OS: <strong>%s</strong>', sys.System.getOSName()))
 
-        self.runButton = Button('Run')
+        self.runButton = ui.Button('Run')
         self.runButton:setResizeRule('fixed', 'fixed')
-        self.runButton:setIcon(images('app/run.png'))
+        self.runButton:setIcon(res.Resources.images('app/run.png'))
         self.runButton:setOnClick(function()
             local ProjectRunner = require "app.core.project_runner"
             if AppState.projectIsRunning then
@@ -60,11 +65,11 @@ function AppTab.create()
             end
         end)
 
-        self.runProgress = ProgressBar()
+        self.runProgress = ui.ProgressBar()
         self.runProgress:setRange(0, 0)
         self.runProgress:setMaxHeight(5)
         self.runProgress:setResizeRule('maximum', 'maximum')
-        self.runProgress:setVisibility(false)
+        self.runProgress:setVisible(false)
 
         self.detailsRightLayout:addChild(self.appNameLabel)
         self.detailsRightLayout:addChild(self.osLabel)
@@ -81,20 +86,20 @@ function AppTab.create()
     end
 
     local function createPropertiesSection()
-        self.propertiesGrid = GridLayout()
+        self.propertiesGrid = ui.GridLayout()
         self.propertiesGrid:setMargins(0, 40, 0, 0)
 
         local fieldDefinitions = {
-            { label = "App name",    widget = LineEdit(), key = "name",        row = 0, col = 0 },
-            { label = "Version",     widget = LineEdit(), key = "version",     row = 0, col = 2 },
-            { label = "Description", widget = LineEdit(), key = "description", row = 0, col = 4 },
-            { label = "Author",      widget = LineEdit(), key = "author",      row = 1, col = 0 },
-            { label = "Copyright",   widget = LineEdit(), key = "copyright",   row = 1, col = 2 },
-            { label = "Email",       widget = LineEdit(), key = "email",       row = 1, col = 4 }
+            { label = "App name",    widget = ui.LineEdit(), key = "name",        row = 1, col = 1 },
+            { label = "Version",     widget = ui.LineEdit(), key = "version",     row = 1, col = 3 },
+            { label = "Description", widget = ui.LineEdit(), key = "description", row = 1, col = 5 },
+            { label = "Author",      widget = ui.LineEdit(), key = "author",      row = 2, col = 1 },
+            { label = "Copyright",   widget = ui.LineEdit(), key = "copyright",   row = 2, col = 3 },
+            { label = "Email",       widget = ui.LineEdit(), key = "email",       row = 2, col = 5 }
         }
 
         for _, def in ipairs(fieldDefinitions) do
-            self.propertiesGrid:addChild(Label(def.label), def.col, def.row)
+            self.propertiesGrid:addChild(ui.Label(def.label), def.col, def.row)
             self.propertiesGrid:addChild(def.widget, def.col + 1, def.row)
             self.propertyFields[def.key] = def.widget
         end
@@ -103,7 +108,7 @@ function AppTab.create()
     end
 
     local function onSaveClicked()
-        local confirm = app.questionAlertDialog(App.window, 'Confirm Save',
+        local confirm = ui.Dialogs.question(App.window, 'Confirm Save',
             'Are you sure you want to save the modifications?')
 
         if confirm then
@@ -120,40 +125,40 @@ function AppTab.create()
             ProjectManager.PROJECT_CONFIG.project = updatedProject
 
             local success, err = pcall(function()
-                local formattedJSON = app.formatJSON(json.stringify(ProjectManager.PROJECT_CONFIG))
-                app.writeFile(
-                    app.joinPaths(AppState.activeProjectPath, 'app.json'), formattedJSON
+                local formattedJSON = fs.FileSystem.formatJSON(json.stringify(ProjectManager.PROJECT_CONFIG))
+                fs.FileSystem.writeFile(
+                    fs.FileSystem.joinPaths(AppState.activeProjectPath, 'app.json'), formattedJSON
                 )
             end)
 
             if success then
                 self.appNameLabel:setText(string.format('App: <strong>%s</strong>', updatedProject.name))
-                app.alert(App.window, "Success", "Project saved successfully")
+                ui.Dialogs.alert(App.window, "Success", "Project saved successfully")
                 App.console.log("Project saved successfully")
             else
-                app.alert(App.window, "Error",
+                ui.Dialogs.alert(App.window, "Error",
                     string.format("Failed to save project: %s", tostring(err)))
             end
         end
     end
 
     local function createActionButtons()
-        self.buttonLayout = HLayout()
+        self.buttonLayout = ui.HLayout()
         self.buttonLayout:addStretch()
 
-        self.saveButton = Button('Save')
-        self.saveButton:setIcon(images('editor/normal.png'))
+        self.saveButton = ui.Button('Save')
+        self.saveButton:setIcon(res.Resources.images('editor/normal.png'))
         self.saveButton:setOnClick(onSaveClicked)
 
-        self.revertButton = Button('Revert')
-        self.revertButton:setIcon(images('homepage/create_project/cancel.png'))
+        self.revertButton = ui.Button('Revert')
+        self.revertButton:setIcon(res.Resources.images('homepage/create_project/cancel.png'))
         self.revertButton:setOnClick(function()
-            local confirm = app.questionAlertDialog(App.window, 'Confirm Revert',
+            local confirm = ui.Dialogs.question(App.window, 'Confirm Revert',
                 'Are you sure you want to revert all modifications?')
 
             if confirm then
                 local ProjectManager = require "app.core.project_manager"
-                local appConfig = app.joinPaths(AppState.activeProjectPath, 'app.json')
+                local appConfig = fs.FileSystem.joinPaths(AppState.activeProjectPath, 'app.json')
                 ProjectManager.loadProject(appConfig)
             end
         end)
@@ -176,8 +181,8 @@ function AppTab.create()
 
         self.appNameLabel:setText(string.format('App: <strong>%s</strong>', projectData.project.name))
 
-        local iconPath = app.joinPaths(projectData.images, 'app.png')
-        if app.exists(iconPath) then
+        local iconPath = fs.FileSystem.joinPaths(projectData.images, 'app.png')
+        if fs.FileSystem.exists(iconPath) then
             self.appIcon:setImage(iconPath)
         end
 
@@ -196,10 +201,10 @@ function AppTab.create()
 
         progress = {
             show = function()
-                self.runProgress:setVisibility(true)
+                self.runProgress:setVisible(true)
             end,
             hide = function()
-                self.runProgress:setVisibility(false)
+                self.runProgress:setVisible(false)
             end
         },
 

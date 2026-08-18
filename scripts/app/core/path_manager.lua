@@ -1,6 +1,9 @@
 -- PathManager Module
 -- Manages package.path entries for projects
 
+local fs  = require("limekit.fs")
+local sys = require("limekit.sys")
+
 local AppState = require "app.core.app_state"
 
 local PathManager = {
@@ -9,11 +12,11 @@ local PathManager = {
 }
 
 function PathManager.load()
-    PathManager.pathsFile = app.joinPaths(AppState.activeProjectPath, '.require')
+    PathManager.pathsFile = fs.FileSystem.joinPaths(AppState.activeProjectPath, '.require')
 
-    if app.exists(PathManager.pathsFile) then
-        local content = app.readFile(PathManager.pathsFile)
-        PathManager.paths = app.splitString(content, '\n') or {}
+    if fs.FileSystem.exists(PathManager.pathsFile) then
+        local content = fs.FileSystem.readFile(PathManager.pathsFile)
+        PathManager.paths = sys.System.splitString(content, '\n') or {}
     else
         PathManager.paths = {}
     end
@@ -23,12 +26,12 @@ end
 
 function PathManager.save()
     if PathManager.pathsFile then
-        app.writeFile(PathManager.pathsFile, table.concat(PathManager.paths, '\n'))
+        fs.FileSystem.writeFile(PathManager.pathsFile, table.concat(PathManager.paths, '\n'))
     end
 end
 
 function PathManager.addPath(path)
-    path = app.normalPath(path)
+    path = fs.FileSystem.normalPath(path)
     table.insert(PathManager.paths, path)
     PathManager.save()
 end

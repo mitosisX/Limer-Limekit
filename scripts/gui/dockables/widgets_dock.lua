@@ -1,6 +1,8 @@
 -- WidgetsDock Module
 -- Displays available Limekit widgets
 
+local ui  = require("limekit.ui")
+
 local WidgetsDock = {}
 
 function WidgetsDock.create()
@@ -14,12 +16,12 @@ function WidgetsDock.create()
         return count
     end
 
-    local widgetsList = ListBox()
+    local widgetsList = ui.ListBox()
     widgetsList:addImageItems(widgetMap)
 
     local totalWidgets = "(" .. countItems(widgetMap) .. ")"
 
-    local dock = Dockable("widgets " .. totalWidgets)
+    local dock = ui.Dockable("widgets " .. totalWidgets)
     dock:setMinWidth(300)
     dock:setChild(widgetsList)
 

@@ -1,14 +1,16 @@
 -- AppFolderDock Module
 -- Displays project directory tree
 
+local ui  = require("limekit.ui")
+
 local AppFolderDock = {}
 
 function AppFolderDock.create()
-    local dirTree = TreeView()
+    local dirTree = ui.TreeView()
     dirTree:setHeaderHidden(true)
-    dirTree:setColumnWidth(0, 100)
+    dirTree:setColumnWidth(1, 100)
 
-    local dock = Dockable("App directory")
+    local dock = ui.Dockable("App directory")
     dock:setMinWidth(300)
     dock:setChild(dirTree)
 

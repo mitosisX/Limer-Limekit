@@ -1,18 +1,21 @@
 -- AppUtilsDock Module
 -- Displays available app utility functions
 
+local ui  = require("limekit.ui")
+local res = require("limekit.res")
+
 local AppUtilsDock = {}
 
 function AppUtilsDock.create()
     local appUtils = require "data.app_utils"
 
-    local utilsList = ListBox()
+    local utilsList = ui.ListBox()
 
     for _, name in ipairs(appUtils) do
-        utilsList:addImageItem(name, images("widgets/method.png"))
+        utilsList:addImageItem(name, res.Resources.images("widgets/method.png"))
     end
 
-    local dock = Dockable("app utils")
+    local dock = ui.Dockable("app utils")
     dock:setChild(utilsList)
 
     return dock

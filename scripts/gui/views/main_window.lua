@@ -1,6 +1,9 @@
 -- MainWindow Module
 -- Application entry point - creates and wires all components together
 
+local ui  = require("limekit.ui")
+local res = require("limekit.res")
+
 local App = require "app.core.app"
 local Styles = require "gui.styles.init"
 local Theme = require "app.core.theme"
@@ -46,9 +49,9 @@ function MainWindow.create()
 
     local menu = MainMenu.create()
 
-    local window = Window {
+    local window = ui.Window {
         title = "Limer - Rézolu",
-        icon = images('app/lemon.png')
+        icon = res.Resources.images('app/lemon.png')
     }
     App.setWindow(window)
 
@@ -56,7 +59,7 @@ function MainWindow.create()
     -- Fold these rules into the theme stylesheets if you want them back. See gui/styles/general_styles.lua.
     -- window:setStyle(Styles.GENERAL_STYLES)
 
-    local homeStackedWidget = SlidingStackedWidget()
+    local homeStackedWidget = ui.SlidingStackedWidget()
     homeStackedWidget:setOrientation('vertical')
     homeStackedWidget:setAnimation('OutExpo')
     App.setHomeStackedWidget(homeStackedWidget)
@@ -74,7 +77,7 @@ function MainWindow.create()
     homeStackedWidget:addLayout(WelcomeView.create())
     homeStackedWidget:addChild(projectWorkspace.view)
 
-    local homescreenSplitter = Splitter('vertical')
+    local homescreenSplitter = ui.Splitter('vertical')
     homescreenSplitter:addChild(homeStackedWidget)
     homescreenSplitter:addChild(debugTab.tabWidget)
 

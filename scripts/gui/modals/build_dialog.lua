@@ -1,6 +1,10 @@
 -- BuildDialog Module
 -- Modal dialog for building projects into executables with live progress
 
+local ui  = require("limekit.ui")
+local fs  = require("limekit.fs")
+local sys = require("limekit.sys")
+
 local json = require "json"
 local AppState = require "app.core.app_state"
 local App = require "app.core.app"
@@ -22,8 +26,8 @@ local statusLabel = nil
 
 -- Load app.json from project
 local function loadAppConfig(projectPath)
-    local appJsonPath = app.joinPaths(projectPath, "app.json")
-    local content = app.readFile(appJsonPath)
+    local appJsonPath = fs.FileSystem.joinPaths(projectPath, "app.json")
+    local content = fs.FileSystem.readFile(appJsonPath)
     if content then
         local config = json.parse(content)
         return config and config.project or {}
@@ -33,12 +37,12 @@ end
 
 -- Check if icon exists
 local function getIconPath(projectPath)
-    local icoPath = app.joinPaths(projectPath, "images", "app.ico")
-    if app.exists(icoPath) then
+    local icoPath = fs.FileSystem.joinPaths(projectPath, "images", "app.ico")
+    if fs.FileSystem.exists(icoPath) then
         return icoPath
     end
-    local pngPath = app.joinPaths(projectPath, "images", "app.png")
-    if app.exists(pngPath) then
+    local pngPath = fs.FileSystem.joinPaths(projectPath, "images", "app.png")
+    if fs.FileSystem.exists(pngPath) then
         return pngPath
     end
     return ""
@@ -124,7 +128,7 @@ local function startBuild(projectPath, options)
     appendOutput("Project: " .. projectPath)
     appendOutput("----------------------------------------")
 
-    buildProcess = app.buildProject(projectPath, options)
+    buildProcess = sys.ProjectBuilder(projectPath, options)
 
     buildProcess:setOnBuildOutput(function(data)
         appendOutput(data)
@@ -162,7 +166,7 @@ end
 
 function BuildDialog.show()
     if not AppState.activeProjectPath then
-        app.alert(App.window, "No Project", "Please load a project first")
+        ui.Dialogs.alert(App.window, "No Project", "Please load a project first")
         return
     end
 
@@ -170,88 +174,88 @@ function BuildDialog.show()
     local config = loadAppConfig(AppState.activeProjectPath)
     local iconPath = getIconPath(AppState.activeProjectPath)
 
-    currentModal = Modal(App.window, "Build Project")
+    currentModal = ui.Modal(App.window, "Build Project")
     currentModal:setMinSize(600, 650)
 
-    local mainLayout = VLayout()
+    local mainLayout = ui.VLayout()
     mainLayout:setMargins(20, 20, 20, 20)
     mainLayout:setSpacing(8)
 
     -- Header
-    local headerLabel = Label("Build Executable")
+    local headerLabel = ui.Label("Build Executable")
     headerLabel:setFont("Segoe UI", 14)
     headerLabel:setBold(true)
     mainLayout:addChild(headerLabel)
 
-    local descLabel = Label("Package your Limekit app into a standalone executable.")
+    local descLabel = ui.Label("Package your Limekit app into a standalone executable.")
     mainLayout:addChild(descLabel)
 
-    mainLayout:addChild(Separator())
+    mainLayout:addChild(ui.Separator())
 
     -- App Details Section (collapsible-style with smaller font)
-    local detailsLabel = Label("Application Details")
+    local detailsLabel = ui.Label("Application Details")
     detailsLabel:setBold(true)
     mainLayout:addChild(detailsLabel)
 
     -- Two-column layout for app details
-    local detailsGrid = GridLayout()
+    local detailsGrid = ui.GridLayout()
     detailsGrid:setSpacing(8)
 
     -- Row 0: Name and Version
-    local nameLabel = Label("Name:")
-    local nameInput = LineEdit()
+    local nameLabel = ui.Label("Name:")
+    local nameInput = ui.LineEdit()
     nameInput:setText(config.name or "MyApp")
     nameInput:setHint("App name")
 
-    local versionLabel = Label("Version:")
-    local versionInput = LineEdit()
+    local versionLabel = ui.Label("Version:")
+    local versionInput = ui.LineEdit()
     versionInput:setText(config.version or "1.0")
     versionInput:setHint("1.0.0")
 
-    detailsGrid:addChild(nameLabel, 0, 0)
-    detailsGrid:addChild(nameInput, 0, 1)
-    detailsGrid:addChild(versionLabel, 0, 2)
-    detailsGrid:addChild(versionInput, 0, 3)
+    detailsGrid:addChild(nameLabel, 1, 1)
+    detailsGrid:addChild(nameInput, 1, 2)
+    detailsGrid:addChild(versionLabel, 1, 3)
+    detailsGrid:addChild(versionInput, 1, 4)
 
     -- Row 1: Author and Copyright
-    local authorLabel = Label("Author:")
-    local authorInput = LineEdit()
+    local authorLabel = ui.Label("Author:")
+    local authorInput = ui.LineEdit()
     authorInput:setText(config.author or "")
     authorInput:setHint("Developer")
 
-    local copyrightLabel = Label("Copyright:")
-    local copyrightInput = LineEdit()
+    local copyrightLabel = ui.Label("Copyright:")
+    local copyrightInput = ui.LineEdit()
     copyrightInput:setText(config.copyright or "")
     copyrightInput:setHint("Copyright")
 
-    detailsGrid:addChild(authorLabel, 1, 0)
-    detailsGrid:addChild(authorInput, 1, 1)
-    detailsGrid:addChild(copyrightLabel, 1, 2)
-    detailsGrid:addChild(copyrightInput, 1, 3)
+    detailsGrid:addChild(authorLabel, 2, 1)
+    detailsGrid:addChild(authorInput, 2, 2)
+    detailsGrid:addChild(copyrightLabel, 2, 3)
+    detailsGrid:addChild(copyrightInput, 2, 4)
 
     -- Row 2: Description (full width)
-    local descriptionLabel = Label("Description:")
-    local descriptionInput = LineEdit()
+    local descriptionLabel = ui.Label("Description:")
+    local descriptionInput = ui.LineEdit()
     descriptionInput:setText(config.description or "")
     descriptionInput:setHint("Brief description")
 
-    detailsGrid:addChild(descriptionLabel, 2, 0)
-    detailsGrid:addChild(descriptionInput, 2, 1, 1, 3) -- span 3 columns
+    detailsGrid:addChild(descriptionLabel, 3, 1)
+    detailsGrid:addChild(descriptionInput, 3, 2, 1, 3) -- span 3 columns
 
     -- Row 3: Icon with preview
-    local iconLabel = Label("Icon:")
-    local iconInput = LineEdit()
+    local iconLabel = ui.Label("Icon:")
+    local iconInput = ui.LineEdit()
     iconInput:setText(iconPath)
     iconInput:setHint("Path to .ico or .png")
 
     -- Icon preview
-    local iconPreview = Label("")
+    local iconPreview = ui.Label("")
     iconPreview:setFixedSize(32, 32)
     iconPreview:setStyleSheet("border: 1px solid #ccc; background: #f5f5f5;")
 
     -- Function to update icon preview
     local function updateIconPreview(path)
-        if path and path ~= "" and app.exists(path) then
+        if path and path ~= "" and fs.FileSystem.exists(path) then
             iconPreview:setImage(path)
             iconPreview:setImageSize(32, 32)
         end
@@ -260,51 +264,52 @@ function BuildDialog.show()
     -- Set initial preview
     updateIconPreview(iconPath)
 
-    local iconBrowseBtn = Button("...")
+    local iconBrowseBtn = ui.Button("...")
     iconBrowseBtn:setFixedSize(30, 26)
     iconBrowseBtn:setOnClick(function()
-        local file = app.openFileDialog(currentModal, "Select Icon", "", "Images (*.ico *.png)")
+        local file = ui.Dialogs.openFile(currentModal, "Select Icon", "",
+            { Images = { "ico", "png" } })
         if file and file ~= "" then
             iconInput:setText(file)
             updateIconPreview(file)
         end
     end)
 
-    detailsGrid:addChild(iconLabel, 3, 0)
-    detailsGrid:addChild(iconPreview, 3, 1)
-    detailsGrid:addChild(iconInput, 3, 2)
-    detailsGrid:addChild(iconBrowseBtn, 3, 3)
+    detailsGrid:addChild(iconLabel, 4, 1)
+    detailsGrid:addChild(iconPreview, 4, 2)
+    detailsGrid:addChild(iconInput, 4, 3)
+    detailsGrid:addChild(iconBrowseBtn, 4, 4)
 
     mainLayout:addLayout(detailsGrid)
 
-    mainLayout:addChild(Separator())
+    mainLayout:addChild(ui.Separator())
 
     -- Build Options Section
-    local optionsLabel = Label("Build Options")
+    local optionsLabel = ui.Label("Build Options")
     optionsLabel:setBold(true)
     mainLayout:addChild(optionsLabel)
 
-    local optionsLayout = HLayout()
+    local optionsLayout = ui.HLayout()
     optionsLayout:setSpacing(16)
 
     -- Console mode checkbox - DEFAULT TO TRUE
-    local consoleCheck = CheckBox("Show console window")
-    consoleCheck:setCheck(true)
+    local consoleCheck = ui.CheckBox("Show console window")
+    consoleCheck:setChecked(true)
     optionsLayout:addChild(consoleCheck)
 
     -- Output directory
-    local outputDirLayout = HLayout()
+    local outputDirLayout = ui.HLayout()
     outputDirLayout:setSpacing(8)
-    local outputLabel = Label("Output:")
+    local outputLabel = ui.Label("Output:")
     outputDirLayout:addChild(outputLabel)
-    local outputInput = LineEdit()
-    local defaultOutput = app.joinPaths(AppState.activeProjectPath, "dist")
+    local outputInput = ui.LineEdit()
+    local defaultOutput = fs.FileSystem.joinPaths(AppState.activeProjectPath, "dist")
     outputInput:setText(defaultOutput)
     outputDirLayout:addChild(outputInput)
-    local browseDirBtn = Button("...")
+    local browseDirBtn = ui.Button("...")
     browseDirBtn:setFixedSize(30, 26)
     browseDirBtn:setOnClick(function()
-        local folder = app.folderPickerDialog(currentModal, "Select Output Directory", "")
+        local folder = ui.Dialogs.pickFolder(currentModal, "Select Output Directory", "")
         if folder and folder ~= "" then
             outputInput:setText(folder)
         end
@@ -314,26 +319,26 @@ function BuildDialog.show()
 
     mainLayout:addLayout(optionsLayout)
 
-    mainLayout:addChild(Separator())
+    mainLayout:addChild(ui.Separator())
 
     -- Build Output Section
-    local outputLabel2 = Label("Build Output")
+    local outputLabel2 = ui.Label("Build Output")
     outputLabel2:setBold(true)
     mainLayout:addChild(outputLabel2)
 
     -- Progress bar (hidden initially)
-    progressBar = ProgressBar()
+    progressBar = ui.ProgressBar()
     progressBar:setVisible(false)
     progressBar:setMinHeight(20)
     mainLayout:addChild(progressBar)
 
     -- Status label
-    statusLabel = Label("Ready to build")
+    statusLabel = ui.Label("Ready to build")
     statusLabel:setStyleSheet("color: #666;")
     mainLayout:addChild(statusLabel)
 
     -- Output text area
-    outputText = TextField()
+    outputText = ui.TextField()
     outputText:setReadOnly(true)
     outputText:setMinHeight(150)
     outputText:setFont("Consolas", 9)
@@ -341,12 +346,12 @@ function BuildDialog.show()
     mainLayout:addChild(outputText)
 
     -- Buttons row
-    local buttonLayout = HLayout()
+    local buttonLayout = ui.HLayout()
     buttonLayout:setSpacing(8)
     buttonLayout:setContentAlignment('right')
 
     -- Cancel build button (hidden initially)
-    cancelButton = Button("Cancel Build")
+    cancelButton = ui.Button("Cancel Build")
     cancelButton:setVisible(false)
     cancelButton:setOnClick(function()
         stopBuild()
@@ -354,10 +359,10 @@ function BuildDialog.show()
     buttonLayout:addChild(cancelButton)
 
     -- Close button
-    closeButton = Button("Close")
+    closeButton = ui.Button("Close")
     closeButton:setOnClick(function()
         if isBuilding then
-            local confirm = app.questionAlertDialog(
+            local confirm = ui.Dialogs.question(
                 currentModal,
                 "Build in Progress",
                 "A build is in progress. Cancel it and close?",
@@ -374,10 +379,10 @@ function BuildDialog.show()
     buttonLayout:addChild(closeButton)
 
     -- Build button
-    buildButton = Button("Build")
+    buildButton = ui.Button("Build")
     buildButton:setOnClick(function()
         local options = {
-            console = consoleCheck:getCheck(),
+            console = consoleCheck:isChecked(),
             output_dir = outputInput:getText(),
             name = nameInput:getText(),
             version = versionInput:getText(),

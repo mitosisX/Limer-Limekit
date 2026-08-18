@@ -1,6 +1,9 @@
 -- Theme Module
 -- Handles application theme switching (light/dark)
 
+local ui  = require("limekit.ui")
+local res = require("limekit.res")
+
 local Theme = {
     active = "light",
     themes = {
@@ -17,19 +20,23 @@ local Theme = {
             style = "dark"
         }
     },
-    themeEngine = nil,
     styles = nil
 }
 
+-- 1.x built a theme engine bound to one family: app.Theme("darklight"). 2.0's
+-- ui.Theme is static and takes the family per call, so the family lives here
+-- instead of in an object.
+local FAMILY = "darklight"
+
+
 function Theme.init(styles)
     Theme.styles = styles
-    Theme.themeEngine = app.Theme("darklight")
-    Theme.themeEngine:setTheme(Theme.active)
+    ui.Theme.setTheme(FAMILY, Theme.active)
 end
 
 function Theme.apply(themeName)
     Theme.active = themeName
-    Theme.themeEngine:setTheme(themeName)
+    ui.Theme.setTheme(FAMILY, themeName)
     if Theme.styles then
         Theme.styles.applyProjectListBoxStyles(themeName)
     end
@@ -41,7 +48,7 @@ function Theme.toggleTheme(button)
 
     if activeTheme and activeTheme.displayName == buttonText then
         button:setText(activeTheme.next)
-        button:setIcon(images(activeTheme.icon))
+        button:setIcon(res.Resources.images(activeTheme.icon))
         Theme.apply(activeTheme.style)
     end
 end

@@ -1,16 +1,18 @@
 -- Console Module
 -- Provides logging functionality for the application
 
+local ui  = require("limekit.ui")
+
 local Console = {}
 
 function Console.create()
     local self = {
-        view = Container(),
-        logConsole = TextField()
+        view = ui.Container(),
+        logConsole = ui.TextField()
     }
 
     local function initUI()
-        local consoleLayout = VLayout()
+        local consoleLayout = ui.VLayout()
         self.logConsole:setReadOnly(true)
         consoleLayout:addChild(self.logConsole)
         self.view:setLayout(consoleLayout)

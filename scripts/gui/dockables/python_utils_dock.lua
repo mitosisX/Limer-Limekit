@@ -1,18 +1,21 @@
 -- PythonUtilsDock Module
 -- Displays available Python utility functions
 
+local ui  = require("limekit.ui")
+local res = require("limekit.res")
+
 local PythonUtilsDock = {}
 
 function PythonUtilsDock.create()
     local pythonUtils = require "data.python_utils"
 
-    local utilsList = ListBox()
+    local utilsList = ui.ListBox()
 
     for _, name in ipairs(pythonUtils) do
-        utilsList:addImageItem(name, images("py.png"))
+        utilsList:addImageItem(name, res.Resources.images("py.png"))
     end
 
-    local dock = Dockable("Python utils")
+    local dock = ui.Dockable("Python utils")
     dock:setChild(utilsList)
 
     return dock

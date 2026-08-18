@@ -1,6 +1,8 @@
 -- ProjectRunner Module
 -- Handles project execution and process management
 
+local sys = require("limekit.sys")
+
 local AppState = require "app.core.app_state"
 local App = require "app.core.app"
 
@@ -20,7 +22,7 @@ function ProjectRunner.run(projectPath)
     end
 
     App.console.clear()
-    ProjectRunner.process = app.runProject(projectPath)
+    ProjectRunner.process = sys.ProjectRunner(projectPath)
 
     ProjectRunner.process:setOnProcessReadyRead(function(data)
         ProjectRunner._handleOutput(data)

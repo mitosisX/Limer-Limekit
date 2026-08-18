@@ -5,6 +5,9 @@
 -- Content from the TextField is written to ".limekit/_code.lua"
 -- The engine watches this directory and executes the code when it changes
 
+local ui  = require("limekit.ui")
+local fs  = require("limekit.fs")
+
 local Paths = require "app.core.config.paths"
 local AppState = require "app.core.app_state"
 local App = require "app.core.app"
@@ -13,12 +16,12 @@ local CodeInjector = {}
 
 function CodeInjector.create()
     local self = {
-        view = Container(),
-        codeInjectionLayout = VLayout(),
-        buttonLayout = HLayout(),
-        runButton = Button('Run'),
-        clearButton = Button('Clear'),
-        codeField = TextField()
+        view = ui.Container(),
+        codeInjectionLayout = ui.VLayout(),
+        buttonLayout = ui.HLayout(),
+        runButton = ui.Button('Run'),
+        clearButton = ui.Button('Clear'),
+        codeField = ui.TextField()
     }
 
     local function initUI()
@@ -29,10 +32,10 @@ function CodeInjector.create()
             local code = self.codeField:getText()
 
             if code ~= "" then
-                app.writeFile(Paths.codeInjectionFile, code)
+                fs.FileSystem.writeFile(Paths.codeInjectionFile, code)
                 self.codeField:clear()
             else
-                app.criticalAlertDialog(App.window, 'Error!',
+                ui.Dialogs.critical(App.window, 'Error!',
                     "You'll need to write some code first...")
             end
         end)

@@ -1,12 +1,15 @@
 -- WelcomeView Module
 -- Creates the home/welcome screen layout
 
+local ui  = require("limekit.ui")
+local res = require("limekit.res")
+
 local WelcomeView = {}
 
 function WelcomeView.create()
     local ProjectCreator = require "gui.modals.project_creator"
 
-    local layout = VLayout()
+    local layout = ui.VLayout()
     layout:setContentAlignment('vcenter', 'center')
 
     layout:addStretch()
@@ -16,21 +19,21 @@ function WelcomeView.create()
         'homepage/cat.gif'
     }
 
-    local welcomeGif = GifPlayer(images(gifPaths[math.random(#gifPaths)]))
+    local welcomeGif = ui.GifPlayer(res.Resources.images(gifPaths[math.random(#gifPaths)]))
     welcomeGif:setSize(120, 120)
     layout:addChild(welcomeGif)
 
-    local title = Label('<strong>Limer</strong> -')
+    local title = ui.Label('<strong>Limer</strong> -')
     title:setTextSize(32)
     layout:addChild(title)
 
     local features = WelcomeView._createFeatureCards()
     layout:addLayout(features)
 
-    local commandLayout = HLayout()
+    local commandLayout = ui.HLayout()
     commandLayout:setContentAlignment('right')
 
-    local createProjectButton = CommandButton('Create a project')
+    local createProjectButton = ui.CommandButton('Create a project')
     createProjectButton:setResizeRule('fixed', 'fixed')
     createProjectButton:setOnClick(ProjectCreator.show)
 
@@ -44,7 +47,7 @@ function WelcomeView.create()
 end
 
 function WelcomeView._createFeatureCards()
-    local featuresLayout = HLayout()
+    local featuresLayout = ui.HLayout()
     local featureItems = {
         { image = 'homepage/modern.png',   text = 'Develop modern UI' },
         { image = 'homepage/lua_logo.png', text = 'Developed in lua' },
@@ -56,7 +59,7 @@ function WelcomeView._createFeatureCards()
 
     for _, item in ipairs(featureItems) do
         featuresLayout:addChild(WelcomeView._createFeatureCard(
-            images(item.image),
+            res.Resources.images(item.image),
             item.text,
             item.highlight
         ))
@@ -66,14 +69,14 @@ function WelcomeView._createFeatureCards()
 end
 
 function WelcomeView._createFeatureCard(imagePath, text, highlight)
-    local card = GroupBox()
-    local cardLayout = VLayout()
+    local card = ui.GroupBox()
+    local cardLayout = ui.VLayout()
 
-    local image = Image(imagePath)
+    local image = ui.Image(imagePath)
     image:setImageAlignment('center')
-    image:resizeImage(80, 80)
+    image:setImageSize(80, 80)
 
-    local label = Label(text)
+    local label = ui.Label(text)
     label:setTextSize(9)
     label:setTextAlignment('center')
 
@@ -89,11 +92,11 @@ function WelcomeView._createFeatureCard(imagePath, text, highlight)
 end
 
 function WelcomeView._createFooter()
-    local footer = Label('Built with LOVE from Malawi (warm heart of Africa)')
+    local footer = ui.Label('Built with LOVE from Malawi (warm heart of Africa)')
     footer:setBold(true)
     footer:setTextColor('#2979FF')
     footer:setTextSize(10)
-    footer:setTextAlignment('hcenter', 'bottom')
+    footer:setTextAlignment({ 'hcenter', 'bottom' })
     return footer
 end
 

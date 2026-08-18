@@ -1,6 +1,10 @@
 -- ProjectCreator Module
 -- Modal dialog for creating new Limekit projects
 
+local ui  = require("limekit.ui")
+local fs  = require("limekit.fs")
+local res = require("limekit.res")
+
 local json = require "json"
 local Paths = require "app.core.config.paths"
 local App = require "app.core.app"
@@ -14,15 +18,15 @@ function ProjectCreator.show()
 
     ProjectCreator.selectedIcon = nil
 
-    local modal = Modal(App.window, "Create New Project")
+    local modal = ui.Modal(App.window, "Create New Project")
     modal:setMinSize(550, 400)
 
-    local mainLayout = HLayout()
+    local mainLayout = ui.HLayout()
 
-    local featuresPanel = GroupBox()
+    local featuresPanel = ui.GroupBox()
     featuresPanel:setBackgroundColor('#307DE1')
 
-    local featuresLayout = VLayout()
+    local featuresLayout = ui.VLayout()
     featuresLayout:setContentAlignment('center')
 
     local features = {
@@ -33,11 +37,11 @@ function ProjectCreator.show()
     }
 
     for _, feature in ipairs(features) do
-        local title = Label(feature.title)
+        local title = ui.Label(feature.title)
         title:setBold(true)
         title:setTextColor('white')
 
-        local desc = Label(feature.desc)
+        local desc = ui.Label(feature.desc)
         desc:setTextColor('white')
 
         featuresLayout:addChild(title)
@@ -47,38 +51,38 @@ function ProjectCreator.show()
     featuresPanel:setLayout(featuresLayout)
     mainLayout:addChild(featuresPanel)
 
-    local formLayout = VLayout()
+    local formLayout = ui.VLayout()
     formLayout:setMargins(10, 0, 0, 0)
 
-    local iconPreview = Image(images('create_project/package.png'))
+    local iconPreview = ui.Image(res.Resources.images('create_project/package.png'))
     iconPreview:setImageAlignment('center')
     formLayout:addChild(iconPreview)
 
-    local nameLabel = Label("Project Name:")
+    local nameLabel = ui.Label("Project Name:")
     nameLabel:setBold(true)
     formLayout:addChild(nameLabel)
 
-    local nameInput = LineEdit()
+    local nameInput = ui.LineEdit()
     formLayout:addChild(nameInput)
 
-    local versionLabel = Label("Version:")
+    local versionLabel = ui.Label("Version:")
     versionLabel:setBold(true)
     formLayout:addChild(versionLabel)
 
-    local versionInput = LineEdit()
+    local versionInput = ui.LineEdit()
     versionInput:setText("1.0")
     formLayout:addChild(versionInput)
 
-    local iconLabel = Label("App Icon:")
+    local iconLabel = ui.Label("App Icon:")
     iconLabel:setBold(true)
     formLayout:addChild(iconLabel)
 
-    local iconButton = Label()
-    iconButton:setImage(images('create_project/icon.png'))
+    local iconButton = ui.Label()
+    iconButton:setImage(res.Resources.images('create_project/icon.png'))
     iconButton:setCursor('pointinghand')
 
     iconButton:setOnClick(function()
-        local iconPath = app.openFileDialog(
+        local iconPath = ui.Dialogs.openFile(
             modal,
             "Choose App Icon",
             "",
@@ -86,22 +90,22 @@ function ProjectCreator.show()
         )
 
         if iconPath ~= nil then
-            ProjectCreator.selectedIcon = app.normalPath(iconPath)
+            ProjectCreator.selectedIcon = fs.FileSystem.normalPath(iconPath)
             iconButton:setImage(ProjectCreator.selectedIcon)
-            iconButton:resizeImage(50, 50)
+            iconButton:setImageSize(50, 50)
         end
     end)
     formLayout:addChild(iconButton)
 
-    local createButton = Button("Create Project")
-    createButton:setIcon(images('homepage/create_project/done_white.png'))
+    local createButton = ui.Button("Create Project")
+    createButton:setIcon(res.Resources.images('homepage/create_project/done_white.png'))
 
     createButton:setOnClick(function()
         local projectName = nameInput:getText()
         local version = versionInput:getText()
 
         if projectName == "" then
-            app.alert(modal, "Oops!", "Please enter a project name")
+            ui.Dialogs.alert(modal, "Oops!", "Please enter a project name")
             return
         end
 
@@ -110,11 +114,11 @@ function ProjectCreator.show()
         end
 
         if ProjectCreator.selectedIcon == nil then
-            local question = app.questionAlertDialog(App.window, "Heads up!",
+            local question = ui.Dialogs.question(App.window, "Heads up!",
                 "You have not selected an icon for your app, use default icon?")
 
             if question then
-                ProjectCreator.selectedIcon = images('app/lime.png')
+                ProjectCreator.selectedIcon = res.Resources.images('app/lime.png')
             else
                 return
             end
@@ -133,22 +137,22 @@ end
 function ProjectCreator._createProjectFiles(modal, name, version, iconPath)
     local ProjectManager = require "app.core.project_manager"
 
-    local projectFolder = app.joinPaths(Paths.limekitProjectsFolder, name)
+    local projectFolder = fs.FileSystem.joinPaths(Paths.limekitProjectsFolder, name)
 
-    if app.exists(projectFolder) then
-        app.alert(modal, "Exists!", "A project with this name already exists")
+    if fs.FileSystem.exists(projectFolder) then
+        ui.Dialogs.alert(modal, "Exists!", "A project with this name already exists")
         return
     end
 
-    app.createFolder(projectFolder)
-    app.createFolder(app.joinPaths(projectFolder, "scripts"))
-    app.createFolder(app.joinPaths(projectFolder, "images"))
-    app.createFolder(app.joinPaths(projectFolder, "misc"))
+    fs.FileSystem.createFolder(projectFolder)
+    fs.FileSystem.createFolder(fs.FileSystem.joinPaths(projectFolder, "scripts"))
+    fs.FileSystem.createFolder(fs.FileSystem.joinPaths(projectFolder, "images"))
+    fs.FileSystem.createFolder(fs.FileSystem.joinPaths(projectFolder, "misc"))
 
     local mainLua = "-- Welcome to the new era for modern lua gui development\n\nwindow = Window{title='New app - Limekit', icon = images('app.png'), size={400, 400}}\nwindow:show()"
 
-    app.writeFile(
-        app.joinPaths(projectFolder, "scripts", "main.lua"),
+    fs.FileSystem.writeFile(
+        fs.FileSystem.joinPaths(projectFolder, "scripts", "main.lua"),
         mainLua
     )
 
@@ -166,23 +170,23 @@ function ProjectCreator._createProjectFiles(modal, name, version, iconPath)
         }
     }
 
-    local jsonFormatted = app.formatJSON(json.stringify(projectConfig))
+    local jsonFormatted = fs.FileSystem.formatJSON(json.stringify(projectConfig))
 
-    app.createFile(app.joinPaths(projectFolder, '.require'))
+    fs.FileSystem.createFile(fs.FileSystem.joinPaths(projectFolder, '.require'))
 
-    local appJSON = app.joinPaths(projectFolder, "app.json")
-    app.writeFile(appJSON, jsonFormatted)
+    local appJSON = fs.FileSystem.joinPaths(projectFolder, "app.json")
+    fs.FileSystem.writeFile(appJSON, jsonFormatted)
 
     if iconPath ~= "" then
-        app.copyFile(
+        fs.FileSystem.copyFile(
             iconPath,
-            app.joinPaths(projectFolder, "images", "app.png")
+            fs.FileSystem.joinPaths(projectFolder, "images", "app.png")
         )
     end
 
     modal:dismiss()
 
-    app.alert(App.window, "Success!", "Project created successfully!")
+    ui.Dialogs.alert(App.window, "Success!", "Project created successfully!")
     App.console.log('Created at ' .. projectFolder)
 
     ProjectManager.loadProject(appJSON)

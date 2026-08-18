@@ -1,11 +1,55 @@
 -- MainMenu Module
 -- Defines the application menu bar
 
+local ui  = require("limekit.ui")
+local res = require("limekit.res")
+local sys = require("limekit.sys")
+
 local Navigation = require "gui.navigation"
 local Theme = require "app.core.theme"
 local AppState = require "app.core.app_state"
 
 local MainMenu = {}
+
+-- 2.0 removed Menubar:buildFromTemplate. 1.x shipped three inconsistent
+-- versions of it, disagreeing on how submenus nested, and every one of them
+-- bottomed out in addMenuItem/addMenu anyway -- so the table shape lives here,
+-- in the module that owns it, rather than in the framework.
+--
+-- Recognised keys: label ("-" makes a separator), icon, shortcut, click,
+-- disabled, submenu.
+local function buildMenu(menu, items)
+    for _, item in ipairs(items) do
+        if item.label == "-" then
+            menu:addSeparator()
+        elseif item.submenu then
+            local sub = ui.Menu(item.label)
+            if item.icon then sub:setIcon(item.icon) end
+            buildMenu(sub, item.submenu)
+            menu:addMenu(sub)
+        else
+            local entry = ui.MenuItem(item.label)
+            if item.icon then entry:setIcon(item.icon) end
+            if item.shortcut then entry:setShortcut(item.shortcut) end
+            if item.disabled then entry:setEnabled(false) end
+            if item.click then entry:setOnClick(item.click) end
+            menu:addMenuItem(entry)
+        end
+    end
+    return menu
+end
+
+local function buildMenubar(items)
+    local menubar = ui.Menubar()
+    for _, top in ipairs(items) do
+        local menu = ui.Menu(top.label)
+        if top.icon then menu:setIcon(top.icon) end
+        buildMenu(menu, top.submenu or {})
+        menubar:addMenu(menu)
+    end
+    return menubar
+end
+
 
 function MainMenu.create()
     local ProjectCreator = require "gui.modals.project_creator"
@@ -21,21 +65,21 @@ function MainMenu.create()
                 {
                     name = 'create_project',
                     label = 'New Project',
-                    icon = images('toolbar/new_project.png'),
+                    icon = res.Resources.images('toolbar/new_project.png'),
                     shortcut = "Ctrl+N",
                     click = ProjectCreator.show
                 },
                 {
                     label = 'Open Project',
-                    icon = images('toolbar/open_project.png'),
+                    icon = res.Resources.images('toolbar/open_project.png'),
                     shortcut = "Ctrl+O",
                     click = ProjectManager.openProject
                 },
                 { label = '-' },
                 {
                     label = 'Exit',
-                    icon = images('exit.png'),
-                    click = function() app.quit() end
+                    icon = res.Resources.images('exit.png'),
+                    click = function() sys.System.exit() end
                 }
             }
         },
@@ -54,7 +98,7 @@ function MainMenu.create()
                         {
                             name = 'light_theme',
                             label = 'Dark',
-                            icon = images('app/dark.png'),
+                            icon = res.Resources.images('app/dark.png'),
                             click = Theme.toggleTheme
                         }
                     }
@@ -91,7 +135,7 @@ function MainMenu.create()
                         if AppState.activeProjectPath ~= nil then
                             BuildDialog.show()
                         else
-                            app.alert(nil, "No Project", "Please load a project first")
+                            ui.Dialogs.alert(nil, "No Project", "Please load a project first")
                         end
                     end
                 }
@@ -105,8 +149,7 @@ function MainMenu.create()
         }
     }
 
-    local menubar = Menubar()
-    menubar:buildFromTemplate(menubarItems)
+    local menubar = buildMenubar(menubarItems)
 
     return {
         menubar = menubar

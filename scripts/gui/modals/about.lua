@@ -1,34 +1,37 @@
 -- AboutPage Module
 -- Modal dialog showing application information
 
+local ui  = require("limekit.ui")
+local res = require("limekit.res")
+
 local App = require "app.core.app"
 
 local AboutPage = {}
 
 function AboutPage.show()
-    local modal = Modal(App.window, "About Limer")
+    local modal = ui.Modal(App.window, "About Limer")
     modal:setMinSize(550, 400)
     modal:setMaxSize(550, 400)
 
-    local mainLayout = HLayout()
+    local mainLayout = ui.HLayout()
 
-    local groupBox = GroupBox()
+    local groupBox = ui.GroupBox()
     groupBox:setBackgroundColor('#307DE1')
 
-    local groupLayout = HLayout()
+    local groupLayout = ui.HLayout()
 
     local gifs = { 'homepage/sheep.gif', 'homepage/cat.gif' }
     local randomGif = gifs[math.random(#gifs)]
 
-    local gifPlayer = GifPlayer(images(randomGif))
+    local gifPlayer = ui.GifPlayer(res.Resources.images(randomGif))
     gifPlayer:setSize(120, 120)
     gifPlayer:setResizeRule('fixed', 'fixed')
     gifPlayer:setMargins(90, 0, 0, 0)
 
     groupLayout:addChild(gifPlayer)
-    groupLayout:addChild(VLine())
+    groupLayout:addChild(ui.VLine())
 
-    local infoLayout = VLayout()
+    local infoLayout = ui.VLayout()
     infoLayout:setContentAlignment('center')
 
     local infoItems = {
@@ -40,11 +43,11 @@ function AboutPage.show()
     }
 
     for _, item in ipairs(infoItems) do
-        local titleLabel = Label(item.title)
+        local titleLabel = ui.Label(item.title)
         titleLabel:setBold(true)
         titleLabel:setTextColor('white')
 
-        local valueLabel = Label(item.value)
+        local valueLabel = ui.Label(item.value)
         valueLabel:setTextColor('white')
 
         infoLayout:addChild(titleLabel)

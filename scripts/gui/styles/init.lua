@@ -20,11 +20,11 @@ function Styles.applyProjectListBoxStyles(activeTheme)
     end
 
     if activeTheme == 'light' then
-        App.dockables.userProjectsListDock.userProjectsList:setStyle(Styles.PROJECT_LISTBOX_LIGHT)
-        App.projectWorkspace.tabs:setStyle(Styles.PROJECT_TAB_LIGHT)
+        App.dockables.userProjectsListDock.userProjectsList:setStyleSheet(Styles.PROJECT_LISTBOX_LIGHT)
+        App.projectWorkspace.tabs:setStyleSheet(Styles.PROJECT_TAB_LIGHT)
     elseif activeTheme == 'dark' then
-        App.dockables.userProjectsListDock.userProjectsList:setStyle(Styles.PROJECT_LISTBOX_DARK)
-        App.projectWorkspace.tabs:setStyle(Styles.PROJECT_TAB_DARK)
+        App.dockables.userProjectsListDock.userProjectsList:setStyleSheet(Styles.PROJECT_LISTBOX_DARK)
+        App.projectWorkspace.tabs:setStyleSheet(Styles.PROJECT_TAB_DARK)
     end
 end
 
