@@ -22,6 +22,20 @@ local Inspector = {
     connected = false,
 }
 
+-- The inspector is a 2.0 feature and cannot be anything else. A 1.x project
+-- starts through `from limekit import runner`, a different entry point that
+-- never reaches the one where the channel is opened -- and its widgets are
+-- not LimeObjects, so they carry none of the property declarations the
+-- property table is built from. Half-supporting that would be worse than
+-- saying so.
+Inspector.ENGINE_REQUIRED = "2.0"
+
+--- Whether this project's engine can be inspected at all.
+function Inspector.supports(runner)
+    local ok, version = pcall(function() return runner:getApiVersion() end)
+    return ok and version == Inspector.ENGINE_REQUIRED, ok and version or "unknown"
+end
+
 --- The channel, opened on first use. Returns the socket name to hand the
 --- project, or nil if a socket could not be opened at all.
 function Inspector.prepare()
@@ -62,6 +76,12 @@ end
 
 function Inspector.setView(view)
     Inspector.view = view
+end
+
+--- Told when a project starts on an engine that has no channel to offer.
+function Inspector.unavailable(reason)
+    Inspector.connected = false
+    if Inspector.view then Inspector.view.onUnavailable(reason) end
 end
 
 return Inspector

@@ -104,9 +104,18 @@ function ProjectRunner.run(projectPath)
     -- its environment. That is the whole permission model: a project cannot
     -- decide to expose itself.
     local Inspector = require "app.core.inspector"
-    local channelName = Inspector.prepare()
-    if channelName then
-        ProjectRunner.process:setEnvironmentValue("LIMEKIT_INSPECT", channelName)
+    local supported, engine = Inspector.supports(ProjectRunner.process)
+
+    if not supported then
+        -- Said out loud rather than left as an inspector tab that never
+        -- fills in. A 1.x project runs through a different entry point
+        -- entirely, so there is nothing to wait for.
+        Inspector.unavailable("the " .. tostring(engine) .. " engine has no inspector")
+    else
+        local channelName = Inspector.prepare()
+        if channelName then
+            ProjectRunner.process:setEnvironmentValue("LIMEKIT_INSPECT", channelName)
+        end
     end
 
     ProjectRunner.process:setOnProcessReadyRead(function(data)
