@@ -12,7 +12,7 @@ local App = {
     dockables = nil,
     appTab = nil,
     propertiesTab = nil,
-    codeInjectorTab = nil,
+    inspectorTab = nil,
     debugTab = nil,
     projectWorkspace = nil,
     console = nil,
@@ -55,8 +55,8 @@ function App.setPropertiesTab(propertiesTab)
     App.propertiesTab = propertiesTab
 end
 
-function App.setCodeInjectorTab(codeInjectorTab)
-    App.codeInjectorTab = codeInjectorTab
+function App.setInspectorTab(inspectorTab)
+    App.inspectorTab = inspectorTab
 end
 
 function App.setDebugTab(debugTab)

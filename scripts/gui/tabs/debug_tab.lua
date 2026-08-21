@@ -1,17 +1,20 @@
 -- DebugTab Module
--- Contains console and code injection tabs
+-- The console, and the inspector for whatever is running
 
 local ui  = require("limekit.ui")
 
 local DebugTab = {}
 
-function DebugTab.create(console, codeInjector)
+function DebugTab.create(console, inspectorView)
     local self = {
         tabWidget = ui.Tab()
     }
 
     self.tabWidget:addTab(console.view, 'Console')
-    self.tabWidget:addTab(codeInjector.view, 'Code Injection')
+    -- Not "Code Injection" any more: it is a widget tree first and a code
+    -- box second, because a chunk on its own cannot see anything a project
+    -- declared local.
+    self.tabWidget:addTab(inspectorView.view, 'Inspector')
 
     return {
         tabWidget = self.tabWidget,

@@ -10,7 +10,7 @@ local Theme = require "app.core.theme"
 local ProjectManager = require "app.core.project_manager"
 
 local Console = require "gui.views.console.console"
-local CodeInjector = require "gui.views.codeinjection.injection"
+local InspectorView = require "gui.views.inspector.view"
 local AppTab = require "gui.tabs.app_tab"
 local PropertiesTab = require "gui.tabs.properties_tab"
 local DebugTab = require "gui.tabs.debug_tab"
@@ -27,8 +27,8 @@ function MainWindow.create()
     local console = Console.create()
     App.setConsole(console)
 
-    local codeInjector = CodeInjector.create()
-    App.setCodeInjectorTab(codeInjector)
+    local inspectorView = InspectorView.create()
+    App.setInspectorTab(inspectorView)
 
     local appTab = AppTab.create()
     App.setAppTab(appTab)
@@ -36,7 +36,7 @@ function MainWindow.create()
     local propertiesTab = PropertiesTab.create()
     App.setPropertiesTab(propertiesTab)
 
-    local debugTab = DebugTab.create(console, codeInjector)
+    local debugTab = DebugTab.create(console, inspectorView)
     App.setDebugTab(debugTab)
 
     local projectWorkspace = ProjectWorkspace.create(appTab, propertiesTab)

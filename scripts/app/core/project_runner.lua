@@ -100,6 +100,15 @@ function ProjectRunner.run(projectPath)
     ProjectRunner.projectName = basename(projectPath)
     ProjectRunner.process = sys.ProjectRunner(projectPath)
 
+    -- The project opens an inspection channel only because we name one in
+    -- its environment. That is the whole permission model: a project cannot
+    -- decide to expose itself.
+    local Inspector = require "app.core.inspector"
+    local channelName = Inspector.prepare()
+    if channelName then
+        ProjectRunner.process:setEnvironmentValue("LIMEKIT_INSPECT", channelName)
+    end
+
     ProjectRunner.process:setOnProcessReadyRead(function(data)
         ProjectRunner._handleOutput(data)
     end)

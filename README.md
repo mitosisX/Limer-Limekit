@@ -45,7 +45,9 @@ strings included.
   wherever you are not.
 - **Right — Your Projects.** Everything under your Limekit projects folder.
   Double-click to open.
-- **Bottom — Console and Code Injection.**
+- **Bottom — Console and Inspector.** While a project is running, the
+  Inspector shows its live widget tree: pick a widget, read and edit its
+  properties, or run Lua inside it.
 - **Ctrl+K — the Limekit API.** Search all 2273 classes, methods,
   properties and events; Enter copies the call.
 
