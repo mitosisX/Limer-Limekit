@@ -40,9 +40,9 @@ strings included.
 
 - **Left — Project.** The open project's files. Double-click one and it
   opens in whatever your desktop has registered for it.
-- **Centre — the home page, and your project's Application and Properties
-  tabs.** One toolbar button switches between them, and it is named after
-  wherever you are not.
+- **Centre — the home page, and your project's Application, Properties and
+  Designer tabs.** One toolbar button switches between the home page and
+  your project, and it is named after wherever you are not.
 - **Right — Your Projects.** Everything under your Limekit projects folder.
   Double-click to open.
 - **Bottom — Console and Inspector.** While a project is running, the
@@ -51,7 +51,30 @@ strings included.
 - **Ctrl+K — the Limekit API.** Search all 2273 classes, methods,
   properties and events; Enter copies the call.
 
-There is no widget palette. Limer had one for a long time and it caused more
+### The Designer
+
+Pick widgets from a palette, arrange them in rows and columns, edit their
+properties, and write the result out as Lua.
+
+The widgets on the canvas are real Limekit widgets running inside Limer —
+not pictures of them and not a preview. What stops a designed button being
+pressed when you mean to select it is `ui.DesignSurface`, which takes the
+whole design out of the mouse's reach without changing how any of it draws.
+
+**Generation is one way.** The design is the source of truth and it writes
+`scripts/designed.lua`; it never touches your `main.lua` and never reads its
+own output back. Edit the design, or edit the file — not both expecting them
+to meet. This is the same bargain Qt Designer strikes with `.ui`, and for the
+same reason: reconciling generated code with hand-edited code is what kills
+these tools.
+
+Layouts, not coordinates: a widget goes *into a row or a column*, at a
+position, rather than at an x and a y. That is what makes a designed window
+survive being resized.
+
+### No widget palette in the dock
+
+There is no widget palette down the side of the window. Limer had one for a long time and it caused more
 confusion than it solved: a list of widget names down the left edge reads as
 a drag-and-drop toolbox in every other IDE, and there is no canvas here to
 drag onto. Ctrl+K makes no such promise.

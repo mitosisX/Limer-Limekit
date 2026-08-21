@@ -21,9 +21,11 @@ local ProjectFilesDock = {}
 
 --- The on-disk path a tree item stands for.
 --
--- Rebuilt from the item's ancestry rather than remembered one per item: lupa
--- hands Lua a fresh proxy for the same Qt object on each crossing, so a
--- `paths[item]` table would miss as often as it hit.
+-- Rebuilt from the item's ancestry rather than remembered one per item.
+-- A TreeViewItem is a QTreeWidgetItem, and PySide hands back a new Python
+-- wrapper each time Qt is asked for one, so a `paths[item]` table would miss
+-- as often as it hit. (Widgets do not behave this way -- lupa returns the
+-- same proxy for a LimeObject every time -- but tree items are not widgets.)
 function ProjectFilesDock.pathOf(item)
     if not AppState.activeProjectPath then return nil end
 

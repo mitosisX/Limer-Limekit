@@ -11,6 +11,7 @@ local ProjectManager = require "app.core.project_manager"
 
 local Console = require "gui.views.console.console"
 local InspectorView = require "gui.views.inspector.view"
+local DesignerView = require "gui.views.designer.view"
 local AppTab = require "gui.tabs.app_tab"
 local PropertiesTab = require "gui.tabs.properties_tab"
 local DebugTab = require "gui.tabs.debug_tab"
@@ -39,7 +40,10 @@ function MainWindow.create()
     local debugTab = DebugTab.create(console, inspectorView)
     App.setDebugTab(debugTab)
 
-    local projectWorkspace = ProjectWorkspace.create(appTab, propertiesTab)
+    local designerTab = DesignerView.create()
+    App.setDesignerTab(designerTab)
+
+    local projectWorkspace = ProjectWorkspace.create(appTab, propertiesTab, designerTab)
     App.setProjectWorkspace(projectWorkspace)
 
     local dockables = Dockables.create()

@@ -13,6 +13,7 @@ local App = {
     appTab = nil,
     propertiesTab = nil,
     inspectorTab = nil,
+    designerTab = nil,
     debugTab = nil,
     projectWorkspace = nil,
     console = nil,
@@ -57,6 +58,10 @@ end
 
 function App.setInspectorTab(inspectorTab)
     App.inspectorTab = inspectorTab
+end
+
+function App.setDesignerTab(designerTab)
+    App.designerTab = designerTab
 end
 
 function App.setDebugTab(debugTab)

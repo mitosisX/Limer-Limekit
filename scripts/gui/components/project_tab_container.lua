@@ -1,11 +1,11 @@
 -- ProjectWorkspace Module
--- Container for project-related tabs (Application, Properties)
+-- Container for project-related tabs (Application, Properties, Designer)
 
 local ui  = require("limekit.ui")
 
 local ProjectWorkspace = {}
 
-function ProjectWorkspace.create(appTab, propertiesTab)
+function ProjectWorkspace.create(appTab, propertiesTab, designerTab)
     local self = {
         tabs = ui.Tab()
     }
@@ -13,6 +13,7 @@ function ProjectWorkspace.create(appTab, propertiesTab)
     local function initTabs()
         self.tabs:addTab(appTab.view, "Application")
         self.tabs:addTab(propertiesTab.view, "Properties")
+        self.tabs:addTab(designerTab.view, "Designer")
     end
 
     initTabs()
