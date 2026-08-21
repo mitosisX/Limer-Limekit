@@ -43,6 +43,46 @@ function ProjectFilesDock.pathOf(item)
     return path
 end
 
+local function eachItem(tree, visit)
+    local function walk(item)
+        visit(item)
+        for index = 1, item:getChildCount() do
+            walk(item:getChildAt(index))
+        end
+    end
+    for index = 1, tree:getTopItemCount() do
+        walk(tree:getTopItemAt(index))
+    end
+end
+
+--- Which folders are open, by path.
+--
+-- The tree is rebuilt from scratch whenever the project changes on disk, and
+-- a tree that collapses itself every time a file is saved is worse than one
+-- that never updates. Paths rather than items, because the items themselves
+-- are about to be thrown away.
+function ProjectFilesDock.captureExpanded(tree)
+    local expanded = {}
+    eachItem(tree, function(item)
+        if item:getExpanded() then
+            local path = ProjectFilesDock.pathOf(item)
+            if path then expanded[path] = true end
+        end
+    end)
+    return expanded
+end
+
+--- Reopens the folders that were open before the rebuild.
+function ProjectFilesDock.restoreExpanded(tree, expanded)
+    if not expanded then return end
+    eachItem(tree, function(item)
+        local path = ProjectFilesDock.pathOf(item)
+        if path and expanded[path] then
+            item:setExpanded(true)
+        end
+    end)
+end
+
 function ProjectFilesDock.create()
     local tree = ui.TreeView()
     tree:setHeaderHidden(true)

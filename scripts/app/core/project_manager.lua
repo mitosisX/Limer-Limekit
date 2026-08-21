@@ -52,6 +52,10 @@ function ProjectManager.loadProject(projectFile)
     ProjectManager._updateUI(App.appTab)
     ProjectManager._updateDirectoryTree()
 
+    -- From here the tree follows the folder rather than a snapshot of it.
+    local ProjectWatcher = require "app.core.project_watcher"
+    ProjectWatcher.start(fileFolderLocation, ProjectManager.refreshDirectoryTree)
+
     App.toolbar.enableProjectActions()
 
     if App.propertiesTab and App.propertiesTab.refresh then
@@ -82,10 +86,24 @@ function ProjectManager._updateUI(appTabInstance)
 end
 
 function ProjectManager._updateDirectoryTree()
+    local ProjectFilesDock = require "gui.dockables.project_files_dock"
     local appDirectoryTree = App.dockables.projectFilesDock.tree
-    appDirectoryTree:clear()
 
+    -- Captured before the rebuild and put back after: this runs on every
+    -- change to the project folder now, and a tree that folds itself shut
+    -- whenever a file is saved would be unusable.
+    local expanded = ProjectFilesDock.captureExpanded(appDirectoryTree)
+
+    appDirectoryTree:clear()
     ProjectManager._showDirectory(appDirectoryTree, ProjectManager._projectData.folder, true)
+
+    ProjectFilesDock.restoreExpanded(appDirectoryTree, expanded)
+end
+
+--- Re-reads the project folder. Called by the watcher.
+function ProjectManager.refreshDirectoryTree()
+    if not ProjectManager._projectData then return end
+    ProjectManager._updateDirectoryTree()
 end
 
 -- `node` is the TreeView at the top level and a TreeViewItem below it. 1.x's
