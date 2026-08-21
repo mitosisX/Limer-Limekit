@@ -78,6 +78,15 @@ function ProjectRunner.run(projectPath)
         return
     end
 
+    -- A Limer that has been built into an executable has no interpreter left
+    -- to start a project with, and asking anyway would silently open a
+    -- second copy of Limer. Say so instead.
+    if not sys.ProjectRunner.canSpawnProjects() then
+        App.console.error("This build of Limer cannot run projects.")
+        App.console.status("error", "Cannot run", "built launchers have no interpreter to start one with")
+        return
+    end
+
     App.console.clear()
     ProjectRunner.projectName = basename(projectPath)
     ProjectRunner.process = sys.ProjectRunner(projectPath)
@@ -133,23 +142,28 @@ end
 function ProjectRunner._handleStart(projectPath)
     local runner = ProjectRunner.process
 
-    -- Which engine a project runs on is decided per project, from its
-    -- app.json, so showing it here answers "why did it behave like that?"
-    -- before the question gets asked.
+    -- The engine is worth saying: both ship, and which one a project uses is
+    -- decided from its own app.json, so it explains behaviour that would
+    -- otherwise look arbitrary. The process id is worth saying because it is
+    -- how you find a stuck app and end it.
+    --
+    -- The command is not. That a project runs by way of a Python interpreter
+    -- is Limekit's business, not its author's -- and once Limer is built into
+    -- an executable it will not be true in that form anyway. It stays
+    -- available on sys.ProjectRunner:getCommand() for anything that wants a
+    -- diagnostics view.
     local engine = runner:getApiVersion()
     local pid = runner:getProcessId()
-    local command = table.concat(runner:getCommand(), " ")
 
-    App.console.log("Running on the " .. engine .. " engine   (pid " .. pid .. ")")
-    App.console.log(command)
+    App.console.log("Running on the " .. engine .. " engine   (process " .. pid .. ")")
     App.console.rule("output")
 
-    startTicking("engine " .. engine .. "   *   pid " .. pid)
+    startTicking("engine " .. engine .. "   *   process " .. pid)
 
-    -- Show it immediately rather than waiting a whole second for the first
-    -- tick, which would look like nothing had happened.
+    -- Shown at once rather than a whole second later, which would look like
+    -- nothing had happened.
     App.console.status("running", "Running  " .. ProjectRunner.projectName,
-                       "engine " .. engine .. "   *   pid " .. pid .. "   *   0s")
+                       "engine " .. engine .. "   *   process " .. pid .. "   *   0s")
 end
 
 function ProjectRunner._handleOutput(data)
