@@ -16,9 +16,23 @@ function MainToolbar.create()
         toolbar = ui.Toolbar(),
         newProjectButton = ui.ToolbarButton('New Project'),
         openProjectButton = ui.ToolbarButton('Open Project'),
-        homePageButton = ui.ToolbarButton('Home Page'),
-        switchToProjectToolbarButton = ui.ToolbarButton('My Project')
+        -- One button, not two. See gui/navigation.lua.
+        viewToggleButton = ui.ToolbarButton('My Project')
     }
+
+    -- The button names its destination rather than its origin, which is the
+    -- way a button that does something is normally labelled.
+    local function showDestination(onHome)
+        if onHome then
+            self.viewToggleButton:setText('My Project')
+            self.viewToggleButton:setToolTip('Switch to your project')
+            self.viewToggleButton:setIcon(res.Resources.images('toolbar/my_project.png'))
+        else
+            self.viewToggleButton:setText('Home Page')
+            self.viewToggleButton:setToolTip('Switch to the home page')
+            self.viewToggleButton:setIcon(res.Resources.images('toolbar/homepage.png'))
+        end
+    end
 
     local function initUI()
         self.toolbar:setToolButtonStyle('textbesideicon')
@@ -29,21 +43,20 @@ function MainToolbar.create()
         self.openProjectButton:setIcon(res.Resources.images('toolbar/open_project.png'))
         self.openProjectButton:setOnClick(ProjectManager.openProject)
 
-        self.homePageButton:setIcon(res.Resources.images('toolbar/homepage.png'))
-        self.homePageButton:setOnClick(Navigation.returnHomePage)
+        -- Dead until there is a project to switch to. Before one is open
+        -- both pages are the home page.
+        self.viewToggleButton:setEnabled(false)
+        self.viewToggleButton:setOnClick(Navigation.toggle)
 
-        self.switchToProjectToolbarButton:setEnabled(false)
-        self.switchToProjectToolbarButton:setToolTip('Switch back to your project')
-        self.switchToProjectToolbarButton:setIcon(res.Resources.images('toolbar/my_project.png'))
-        self.switchToProjectToolbarButton:setOnClick(Navigation.returnToMyProject)
+        showDestination(true)
+        Navigation.observe(showDestination)
     end
 
     local function addButtons()
         self.toolbar:addButton(self.newProjectButton)
         self.toolbar:addButton(self.openProjectButton)
         self.toolbar:addSeparator()
-        self.toolbar:addButton(self.homePageButton)
-        self.toolbar:addButton(self.switchToProjectToolbarButton)
+        self.toolbar:addButton(self.viewToggleButton)
     end
 
     initUI()
@@ -53,8 +66,13 @@ function MainToolbar.create()
         toolbar = self.toolbar,
         newProjectButton = self.newProjectButton,
         openProjectButton = self.openProjectButton,
-        homePageButton = self.homePageButton,
-        switchToProjectToolbarButton = self.switchToProjectToolbarButton
+        viewToggleButton = self.viewToggleButton,
+
+        --- Called once a project is open, which is when switching between
+        --- the two pages starts to mean something.
+        enableViewToggle = function()
+            self.viewToggleButton:setEnabled(true)
+        end
     }
 end
 

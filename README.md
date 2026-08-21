@@ -41,8 +41,8 @@ strings included.
 - **Left — Project.** The open project's files. Double-click one and it
   opens in whatever your desktop has registered for it.
 - **Centre — the home page, and your project's Application and Properties
-  tabs.** The toolbar's *Home Page* and *My Project* buttons switch between
-  them.
+  tabs.** One toolbar button switches between them, and it is named after
+  wherever you are not.
 - **Right — Your Projects.** Everything under your Limekit projects folder.
   Double-click to open.
 - **Bottom — Console and Code Injection.**

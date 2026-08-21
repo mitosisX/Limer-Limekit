@@ -8,6 +8,7 @@ local json = require "json"
 local Paths = require "app.core.config.paths"
 local AppState = require "app.core.app_state"
 local App = require "app.core.app"
+local Navigation = require "gui.navigation"
 
 local ProjectManager = {
     PROJECTS_FOLDER = Paths.limekitProjectsFolder,
@@ -45,11 +46,13 @@ function ProjectManager.loadProject(projectFile)
     ProjectManager._projectData.images = fs.FileSystem.joinPaths(ProjectManager._projectData.folder, 'images')
     ProjectManager._projectData.misc = fs.FileSystem.joinPaths(ProjectManager._projectData.folder, 'misc')
 
-    App.homeStackedWidget:slideNext()
+    -- Through Navigation, not the stack directly, so the toolbar button
+    -- knows it is now offering the way back rather than the way in.
+    Navigation.returnToMyProject()
     ProjectManager._updateUI(App.appTab)
     ProjectManager._updateDirectoryTree()
 
-    App.toolbar.switchToProjectToolbarButton:setEnabled(true)
+    App.toolbar.enableViewToggle()
 
     if App.propertiesTab and App.propertiesTab.refresh then
         App.propertiesTab.refresh()
