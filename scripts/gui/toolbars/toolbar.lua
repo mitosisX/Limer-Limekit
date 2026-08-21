@@ -1,29 +1,35 @@
 -- MainToolbar Module
--- Defines the main application toolbar
+-- New, Open | Run, Build | the view switch.
 
 local ui  = require("limekit.ui")
 local res = require("limekit.res")
 
 local Navigation = require "gui.navigation"
+local AppState = require "app.core.app_state"
 
 local MainToolbar = {}
 
 function MainToolbar.create()
     local ProjectCreator = require "gui.modals.project_creator"
     local ProjectManager = require "app.core.project_manager"
+    local ProjectRunner = require "app.core.project_runner"
+    local BuildDialog = require "gui.modals.build_dialog"
 
     local self = {
         toolbar = ui.Toolbar(),
         newProjectButton = ui.ToolbarButton('New Project'),
         openProjectButton = ui.ToolbarButton('Open Project'),
+        runButton = ui.ToolbarButton('Run'),
+        buildButton = ui.ToolbarButton('Build'),
         -- One button, not two. See gui/navigation.lua.
         viewToggleButton = ui.ToolbarButton('My Project')
     }
 
-    -- The button names its destination rather than its origin, which is the
-    -- way a button that does something is normally labelled.
-    local function showDestination(onHome)
-        if onHome then
+    -- Painted from Navigation's state, which is where it belongs: opening a
+    -- project and the View menu move the view too, and the button has to
+    -- follow all three.
+    local function paintViewButton(showingHome)
+        if showingHome then
             self.viewToggleButton:setText('My Project')
             self.viewToggleButton:setToolTip('Switch to your project')
             self.viewToggleButton:setIcon(res.Resources.images('toolbar/my_project.png'))
@@ -32,6 +38,14 @@ function MainToolbar.create()
             self.viewToggleButton:setToolTip('Switch to the home page')
             self.viewToggleButton:setIcon(res.Resources.images('toolbar/homepage.png'))
         end
+    end
+
+    local function paintRunButton(isRunning)
+        self.runButton:setText(isRunning and 'Stop' or 'Run')
+        self.runButton:setIcon(res.Resources.images(isRunning and 'app/stop.png' or 'app/run.png'))
+        self.runButton:setToolTip(isRunning and 'Stop this project  (Ctrl+X)'
+                                             or 'Run this project  (Ctrl+R)')
+        self.buildButton:setEnabled(not isRunning and AppState.activeProjectPath ~= nil)
     end
 
     local function initUI()
@@ -43,18 +57,37 @@ function MainToolbar.create()
         self.openProjectButton:setIcon(res.Resources.images('toolbar/open_project.png'))
         self.openProjectButton:setOnClick(ProjectManager.openProject)
 
+        self.runButton:setEnabled(false)
+        self.runButton:setOnClick(function()
+            if AppState.activeProjectPath == nil then return end
+            ProjectRunner.toggle()
+        end)
+
+        self.buildButton:setIcon(res.Resources.images('editor/normal.png'))
+        self.buildButton:setToolTip('Build this project into an application  (Ctrl+B)')
+        self.buildButton:setEnabled(false)
+        self.buildButton:setOnClick(function()
+            if AppState.activeProjectPath == nil then return end
+            BuildDialog.show()
+        end)
+
         -- Dead until there is a project to switch to. Before one is open
         -- both pages are the home page.
         self.viewToggleButton:setEnabled(false)
         self.viewToggleButton:setOnClick(Navigation.toggle)
 
-        showDestination(true)
-        Navigation.observe(showDestination)
+        paintViewButton(Navigation.isOnHome())
+        paintRunButton(false)
+        Navigation.observe(paintViewButton)
+        ProjectRunner.observe(paintRunButton)
     end
 
     local function addButtons()
         self.toolbar:addButton(self.newProjectButton)
         self.toolbar:addButton(self.openProjectButton)
+        self.toolbar:addSeparator()
+        self.toolbar:addButton(self.runButton)
+        self.toolbar:addButton(self.buildButton)
         self.toolbar:addSeparator()
         self.toolbar:addButton(self.viewToggleButton)
     end
@@ -66,11 +99,15 @@ function MainToolbar.create()
         toolbar = self.toolbar,
         newProjectButton = self.newProjectButton,
         openProjectButton = self.openProjectButton,
+        runButton = self.runButton,
+        buildButton = self.buildButton,
         viewToggleButton = self.viewToggleButton,
 
-        --- Called once a project is open, which is when switching between
-        --- the two pages starts to mean something.
-        enableViewToggle = function()
+        --- Called once a project is open, which is when running, building
+        --- and switching pages all start to mean something.
+        enableProjectActions = function()
+            self.runButton:setEnabled(true)
+            self.buildButton:setEnabled(true)
             self.viewToggleButton:setEnabled(true)
         end
     }

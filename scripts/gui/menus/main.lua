@@ -7,7 +7,6 @@ local sys = require("limekit.sys")
 
 local Theme = require "app.core.theme"
 local Navigation = require "gui.navigation"
-local AppState = require "app.core.app_state"
 local App = require "app.core.app"
 
 local MainMenu = {}
@@ -55,8 +54,6 @@ end
 function MainMenu.create()
     local ProjectCreator = require "gui.modals.project_creator"
     local ProjectManager = require "app.core.project_manager"
-    local ProjectRunner = require "app.core.project_runner"
-    local BuildDialog = require "gui.modals.build_dialog"
     local AboutPage = require "gui.modals.about"
 
     local menubarItems = {
@@ -111,42 +108,6 @@ function MainMenu.create()
                             click = Theme.toggleTheme
                         }
                     }
-                }
-            }
-        },
-        {
-            label = "&App",
-            submenu = {
-                {
-                    label = "Run",
-                    disabled = true,
-                    shortcut = "Ctrl+R",
-                    click = function()
-                        if not AppState.projectIsRunning and AppState.activeProjectPath ~= nil then
-                            ProjectRunner.toggle()
-                        end
-                    end
-                },
-                {
-                    label = "Stop",
-                    shortcut = "Ctrl+X",
-                    click = function()
-                        if AppState.projectIsRunning then
-                            ProjectRunner.stop()
-                        end
-                    end
-                },
-                { label = "-" },
-                {
-                    label = "Build",
-                    shortcut = "Ctrl+B",
-                    click = function()
-                        if AppState.activeProjectPath ~= nil then
-                            BuildDialog.show()
-                        else
-                            ui.Dialogs.alert(nil, "No Project", "Please load a project first")
-                        end
-                    end
                 }
             }
         },

@@ -211,13 +211,4 @@ function ApiPalette.isOpen()
     return self ~= nil and self.modal:isVisible()
 end
 
---- Wires Ctrl+K on `window`.
-function ApiPalette.attach(window)
-    local shortcut = ui.KeyboardShortcut(window, "Ctrl+K")
-    shortcut:setOnKeyPress(function()
-        ApiPalette.show(window)
-    end)
-    return shortcut
-end
-
 return ApiPalette

@@ -57,12 +57,15 @@ drag onto. Ctrl+K makes no such promise.
 ## Regenerating the API index
 
 `scripts/data/api_index.lua` is generated from Limekit's registry — the same
-source its LSP stubs and manifest come from. Re-run the generator whenever
-Limekit gains or loses API:
+source its LSP stubs and manifest come from. The generator lives in the
+Limekit repository, not this one: Limer ships no Python, and nothing inside
+it should suggest otherwise. Re-run it from there whenever Limekit gains or
+loses API:
 
 ```
-python tools/generate_api_index.py            # write it
-python tools/generate_api_index.py --check    # fail if it is stale
+python tools/generate_api_index.py [path-to-Limer]      # write it
+python tools/generate_api_index.py --check              # fail if stale
 ```
 
-It looks for Limekit in `$LIMEKIT_REPO`, falling back to a sibling checkout.
+It finds Limer from the argument, then `$LIMER_REPO`, then a sibling
+checkout.

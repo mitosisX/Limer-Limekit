@@ -17,9 +17,9 @@ local App = {
     projectWorkspace = nil,
     console = nil,
 
-    -- Ctrl+K. A KeyboardShortcut whose only reference is a local in
-    -- MainWindow.create dies when that function returns.
-    apiPaletteShortcut = nil,
+    -- Run, Stop, Build and Ctrl+K. A KeyboardShortcut whose only reference
+    -- is a local in MainWindow.create dies when that function returns.
+    shortcuts = nil,
 
     -- Services
     theme = nil,

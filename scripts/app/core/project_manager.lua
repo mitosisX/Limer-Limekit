@@ -52,7 +52,7 @@ function ProjectManager.loadProject(projectFile)
     ProjectManager._updateUI(App.appTab)
     ProjectManager._updateDirectoryTree()
 
-    App.toolbar.enableViewToggle()
+    App.toolbar.enableProjectActions()
 
     if App.propertiesTab and App.propertiesTab.refresh then
         App.propertiesTab.refresh()

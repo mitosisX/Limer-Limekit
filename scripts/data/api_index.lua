@@ -1596,6 +1596,7 @@ return {
     { "ui.SlidingStackedWidget:getCount", "method", "getCount()", "getCount()", "getCount on ui.SlidingStackedWidget." },
     { "ui.SlidingStackedWidget:getCurrentIndex", "method", "getCurrentIndex()", "getCurrentIndex()", "getCurrentIndex on ui.SlidingStackedWidget." },
     { "ui.SlidingStackedWidget:hide", "method", "hide()", "hide()", "hide on ui.SlidingStackedWidget." },
+    { "ui.SlidingStackedWidget:isSliding", "method", "isSliding()", "isSliding()", "Whether a slide is still animating." },
     { "ui.SlidingStackedWidget:setAnimation", "method", "setAnimation(animation)", "setAnimation(animation)", "setAnimation on ui.SlidingStackedWidget." },
     { "ui.SlidingStackedWidget:setBackgroundColor", "method", "setBackgroundColor(colour)", "setBackgroundColor(colour)", "setBackgroundColor on ui.SlidingStackedWidget." },
     { "ui.SlidingStackedWidget:setCurrentIndex", "method", "setCurrentIndex(index)", "setCurrentIndex(index)", "setCurrentIndex on ui.SlidingStackedWidget." },

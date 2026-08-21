@@ -19,7 +19,7 @@ local Dockables = require "gui.dockables.init"
 local MainToolbar = require "gui.toolbars.toolbar"
 local MainMenu = require "gui.menus.main"
 local WelcomeView = require "gui.views.homepage.welcome"
-local ApiPalette = require "gui.modals.api_palette"
+local Shortcuts = require "gui.shortcuts"
 
 local MainWindow = {}
 
@@ -97,9 +97,9 @@ function MainWindow.create()
 
     Styles.applyProjectListBoxStyles(Theme.active)
 
-    -- Ctrl+K. Held on the App table because a KeyboardShortcut whose only
+    -- Held on the App table because a KeyboardShortcut whose only
     -- reference is a local dies with this function.
-    App.apiPaletteShortcut = ApiPalette.attach(window)
+    App.shortcuts = Shortcuts.attach(window)
 
     App.markInitialized()
 

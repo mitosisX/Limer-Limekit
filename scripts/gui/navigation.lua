@@ -8,9 +8,12 @@
 
 local App = require "app.core.app"
 
-local HOME = 1
-
 local Navigation = {}
+
+-- Which page is showing, held here rather than read back off the widget.
+-- Mid-slide `getCurrentIndex` reports where the stack is heading rather
+-- than where it is, so asking it answers a question about the future.
+local showingHome = true
 
 local listeners = {}
 
@@ -19,47 +22,50 @@ function Navigation.observe(handler)
     listeners[#listeners + 1] = handler
 end
 
---- Which page is showing. Mid-slide this already reports the destination,
---- so a handler that runs during the animation still agrees with what the
---- user is about to see.
+--- Which page is showing.
 function Navigation.isOnHome()
-    return App.homeStackedWidget:getCurrentIndex() == HOME
+    return showingHome
 end
 
 local function announce()
     for _, handler in ipairs(listeners) do
-        handler(Navigation.isOnHome())
+        handler(showingHome)
     end
 end
 
--- A slide already in flight swallows anything asked of it, while
--- getCurrentIndex reports where it is heading. Acting on a request that is
--- about to be dropped would relabel the button for a page it never reached,
--- so requests during the animation are refused here instead -- which is what
--- the widget does anyway, only visibly consistent.
+-- A slide already in flight swallows anything asked of it. Acting on a
+-- request that is about to be dropped would leave the button naming a page
+-- it never reached, so those requests are refused here instead.
 local function busy()
     return App.homeStackedWidget:isSliding()
 end
 
+--- Returns whether the move was accepted.
 function Navigation.returnHomePage()
-    if busy() then return end
+    if showingHome or busy() then return false end
+
     App.homeStackedWidget:slidePrev()
+    showingHome = true
     announce()
+    return true
 end
 
+--- Returns whether the move was accepted.
 function Navigation.returnToMyProject()
-    if busy() then return end
+    if not showingHome or busy() then return false end
+
     App.homeStackedWidget:slideNext()
+    showingHome = false
     announce()
+    return true
 end
 
---- Whichever page you are not on.
+--- Goes to whichever page you are not on. Returns whether it moved.
 function Navigation.toggle()
-    if Navigation.isOnHome() then
-        Navigation.returnToMyProject()
-    else
-        Navigation.returnHomePage()
+    if showingHome then
+        return Navigation.returnToMyProject()
     end
+    return Navigation.returnHomePage()
 end
 
 return Navigation
