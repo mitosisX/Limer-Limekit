@@ -85,6 +85,15 @@ function MainWindow.create()
 
     window:setOnShown(function()
         window:maximize()
+
+        -- Roughly three quarters workspace, one quarter console. Without
+        -- this the splitter falls back to the two children's size hints and
+        -- gives the console close to half the window, which is far more than
+        -- a few lines of output needs. Set after maximize, because the sizes
+        -- are shared out against the window's actual height and setting them
+        -- against the pre-maximised one is immediately overridden.
+        homescreenSplitter:setSizes({ 74, 26 })
+
         ProjectManager.listAvailableProjects()
     end)
 
