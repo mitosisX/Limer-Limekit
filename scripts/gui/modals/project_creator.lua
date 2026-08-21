@@ -189,6 +189,7 @@ function ProjectCreator._createProjectFiles(modal, name, version, iconPath)
     ui.Dialogs.alert(App.window, "Success!", "Project created successfully!")
     App.console.log('Created at ' .. projectFolder)
 
+    ProjectManager.listAvailableProjects()
     ProjectManager.loadProject(appJSON)
 end
 

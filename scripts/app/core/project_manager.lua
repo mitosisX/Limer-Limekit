@@ -8,6 +8,7 @@ local json = require "json"
 local Paths = require "app.core.config.paths"
 local AppState = require "app.core.app_state"
 local App = require "app.core.app"
+local Navigation = require "gui.navigation"
 
 local ProjectManager = {
     PROJECTS_FOLDER = Paths.limekitProjectsFolder,
@@ -45,15 +46,40 @@ function ProjectManager.loadProject(projectFile)
     ProjectManager._projectData.images = fs.FileSystem.joinPaths(ProjectManager._projectData.folder, 'images')
     ProjectManager._projectData.misc = fs.FileSystem.joinPaths(ProjectManager._projectData.folder, 'misc')
 
-    App.homeStackedWidget:slideNext()
+    Navigation.showWorkspace()
     ProjectManager._updateUI(App.appTab)
     ProjectManager._updateDirectoryTree()
 
-    App.toolbar.switchToProjectToolbarButton:setEnabled(true)
+    App.toolbar.enableProjectActions()
 
     if App.propertiesTab and App.propertiesTab.refresh then
         App.propertiesTab.refresh()
     end
+end
+
+--- Closes the open project and returns to the empty state.
+--
+-- This is what the "Home Page" button used to be, expressed as the action it
+-- actually was. Refusing while the project runs matches openProject: a
+-- running child process outlives the page that started it, and orphaning it
+-- behind a splash screen leaves no way to stop it.
+function ProjectManager.closeProject()
+    if AppState.projectIsRunning then
+        ui.Dialogs.critical(App.window, "Error!",
+            "Please stop the app first before closing the project")
+        return
+    end
+
+    AppState.activeProjectPath = nil
+    ProjectManager.PROJECT_CONFIG = nil
+    ProjectManager._projectData = nil
+
+    App.dockables.projectFilesDock.tree:clear()
+    App.toolbar.disableProjectActions()
+    -- Re-read the folder on the way out: a project may have been created
+    -- since the last time the empty state was on screen.
+    ProjectManager.listAvailableProjects()
+    Navigation.showHome()
 end
 
 function ProjectManager._updateUI(appTabInstance)
@@ -79,7 +105,7 @@ function ProjectManager._updateUI(appTabInstance)
 end
 
 function ProjectManager._updateDirectoryTree()
-    local appDirectoryTree = App.dockables.appFolderDock.appProjectDirTree
+    local appDirectoryTree = App.dockables.projectFilesDock.tree
     appDirectoryTree:clear()
 
     ProjectManager._showDirectory(appDirectoryTree, ProjectManager._projectData.folder, true)
@@ -128,9 +154,23 @@ function ProjectManager.createTreeItem(name, icon)
     return treeItem
 end
 
+-- Both the dock and the empty state show your projects, and they are filled
+-- from here so they cannot disagree about what exists.
 function ProjectManager.listAvailableProjects()
     local projects = ProjectManager._getVisibleProjectFolders()
-    App.dockables.userProjectsListDock.userProjectsList:addItems(projects)
+
+    local dockList = App.dockables.userProjectsListDock.userProjectsList
+    dockList:clear()
+    dockList:addItems(projects)
+
+    local WelcomeView = require "gui.views.homepage.welcome"
+    local homeList = WelcomeView.getProjectsList()
+    if homeList then
+        homeList:clear()
+        homeList:addItems(projects)
+    end
+
+    return projects
 end
 
 function ProjectManager._getVisibleProjectFolders()

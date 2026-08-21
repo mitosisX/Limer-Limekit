@@ -22,23 +22,17 @@ function AppTab.create()
 
     local function initRunnerUI()
         local ProjectRunner = require "app.core.project_runner"
-        ProjectRunner.init({
-            ui = {
-                updateRunState = function()
-                    local isRunning = AppState.projectIsRunning
-                    self.runButton:setText(isRunning and 'Stop' or 'Run')
-                    self.runButton:setIcon(res.Resources.images(isRunning and 'app/stop.png' or 'app/run.png'))
-                    self.runProgress:setVisible(isRunning)
-                end
-            }
-        })
+        ProjectRunner.observe(function(isRunning)
+            self.runButton:setText(isRunning and 'Stop' or 'Run')
+            self.runButton:setIcon(res.Resources.images(isRunning and 'app/stop.png' or 'app/run.png'))
+            self.runProgress:setVisible(isRunning)
+        end)
     end
 
     local function createAppInfoSection()
         self.appInfoGroup = ui.GroupBox()
         ui.DropShadow(self.appInfoGroup)
-        self.appInfoGroup:setMinWidth(500)
-        self.appInfoGroup:setMaxWidth(500)
+        self.appInfoGroup:setMinWidth(520)
 
         self.detailsGroup = ui.GroupBox()
         self.detailsLayout = ui.HLayout()
@@ -170,7 +164,12 @@ function AppTab.create()
 
     local function initComponents()
         self.view:setLayout(self.mainLayout)
-        self.mainLayout:setContentAlignment('vcenter', 'center')
+        -- Top, not centre. Centring a fixed-width card inside a maximised
+        -- window put a small form in the middle of a large empty page and
+        -- made the whole workspace look unfinished; anchoring it to the top
+        -- reads as a settings page, which is what it is.
+        self.mainLayout:setContentAlignment('top', 'hcenter')
+        self.mainLayout:setMargins(24, 24, 24, 24)
         createAppInfoSection()
         createPropertiesSection()
         createActionButtons()

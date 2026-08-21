@@ -30,3 +30,41 @@ You'll use the app called Limer mentioned above to create and run all Limekit pr
 You shall be greeted with this beautiful screen
 
 <img src="images/showcase/1.png" width="500" alt="Limer">
+
+## How Limer is laid out
+
+Limer is a project workbench, not a code editor. It creates, configures,
+runs and builds Limekit projects; you write the Lua in whatever editor you
+already use. Limekit ships Lua Language Server stubs, so that editor knows
+the whole API — completion, signatures and doc strings included.
+
+- **Left — Project.** The open project's files. Double-click one and it
+  opens in whatever your desktop has registered for it.
+- **Centre — Application and Properties.** The project's `app.json` and its
+  `package.path` entries and aliases.
+- **Right — Your Projects.** Everything under your Limekit projects folder.
+  Double-click to open.
+- **Bottom — Console and Code Injection.**
+- **Ctrl+K — the Limekit API.** Search all 2273 classes, methods,
+  properties and events; Enter copies the call.
+
+When no project is open, the centre shows your projects instead. Closing a
+project (`Ctrl+W`) returns you there.
+
+There is no widget palette. Limer had one for a long time and it caused more
+confusion than it solved: a list of widget names down the left edge reads as
+a drag-and-drop toolbox in every other IDE, and there is no canvas here to
+drag onto. Ctrl+K makes no such promise.
+
+## Regenerating the API index
+
+`scripts/data/api_index.lua` is generated from Limekit's registry — the same
+source its LSP stubs and manifest come from. Re-run the generator whenever
+Limekit gains or loses API:
+
+```
+python tools/generate_api_index.py            # write it
+python tools/generate_api_index.py --check    # fail if it is stale
+```
+
+It looks for Limekit in `$LIMEKIT_REPO`, falling back to a sibling checkout.

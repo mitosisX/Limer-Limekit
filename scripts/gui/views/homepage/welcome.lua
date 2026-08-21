@@ -1,103 +1,154 @@
 -- WelcomeView Module
--- Creates the home/welcome screen layout
+-- What Limer shows when no project is open.
+--
+-- This used to be a splash screen reached by a toolbar button: a GIF, a
+-- title, six cards saying things like "Free for everyone" and "Please report
+-- bugs", and one Create button. Nobody navigates back to a brochure while
+-- working, so it is no longer somewhere you go -- it is the state Limer is
+-- in before there is anything to show. That changes what belongs on it: the
+-- fastest route back into work, which is the list of your projects.
+--
+-- The cards are gone. What was useful in them -- reporting a bug, supporting
+-- the project -- is now two links that actually open, which they never did.
 
 local ui  = require("limekit.ui")
 local res = require("limekit.res")
+local sys = require("limekit.sys")
 
 local WelcomeView = {}
 
-function WelcomeView.create()
-    local ProjectCreator = require "gui.modals.project_creator"
+local BUG_URL     = "https://github.com/mitosisx/Limekit/issues"
+local SUPPORT_URL = "https://github.com/sponsors/mitosisx"
 
+local projectsList = nil
+
+local function openLink(url)
+    return function()
+        pcall(sys.System.openPath, url)
+    end
+end
+
+local function linkRow()
+    local row = ui.HLayout()
+    row:setContentAlignment('hcenter')
+
+    local bug = ui.CommandButton('Report a bug')
+    bug:setResizeRule('fixed', 'fixed')
+    bug:setOnClick(openLink(BUG_URL))
+
+    local support = ui.CommandButton('Support this project')
+    support:setResizeRule('fixed', 'fixed')
+    support:setOnClick(openLink(SUPPORT_URL))
+
+    row:addChild(bug)
+    row:addChild(support)
+    return row
+end
+
+local function heading()
     local layout = ui.VLayout()
-    layout:setContentAlignment('vcenter', 'center')
+    layout:setContentAlignment('hcenter')
 
-    layout:addStretch()
-
-    local gifPaths = {
-        'homepage/sheep.gif',
-        'homepage/cat.gif'
-    }
-
+    local gifPaths = { 'homepage/sheep.gif', 'homepage/cat.gif' }
     local welcomeGif = ui.GifPlayer(res.Resources.images(gifPaths[math.random(#gifPaths)]))
-    welcomeGif:setSize(120, 120)
+    welcomeGif:setSize(96, 96)
+
+    local title = ui.Label('<strong>Limer</strong>')
+    title:setTextSize(28)
+    title:setTextAlignment('center')
+
+    local subtitle = ui.Label('The magic wand for Limekit apps')
+    subtitle:setTextSize(10)
+    subtitle:setTextAlignment('center')
+
     layout:addChild(welcomeGif)
-
-    local title = ui.Label('<strong>Limer</strong> -')
-    title:setTextSize(32)
     layout:addChild(title)
+    layout:addChild(subtitle)
+    return layout
+end
 
-    local features = WelcomeView._createFeatureCards()
-    layout:addLayout(features)
+local function actionRow()
+    local ProjectCreator = require "gui.modals.project_creator"
+    local ProjectManager = require "app.core.project_manager"
 
-    local commandLayout = ui.HLayout()
-    commandLayout:setContentAlignment('right')
+    local row = ui.HLayout()
+    row:setContentAlignment('hcenter')
 
-    local createProjectButton = ui.CommandButton('Create a project')
-    createProjectButton:setResizeRule('fixed', 'fixed')
-    createProjectButton:setOnClick(ProjectCreator.show)
+    local create = ui.Button('Create a project')
+    create:setIcon(res.Resources.images('toolbar/new_project.png'))
+    create:setResizeRule('fixed', 'fixed')
+    create:setOnClick(ProjectCreator.show)
 
-    commandLayout:addChild(createProjectButton)
-    layout:addLayout(commandLayout)
+    local open = ui.Button('Open a project')
+    open:setIcon(res.Resources.images('toolbar/open_project.png'))
+    open:setResizeRule('fixed', 'fixed')
+    open:setOnClick(ProjectManager.openProject)
+
+    row:addChild(create)
+    row:addChild(open)
+    return row
+end
+
+local function projectsSection()
+    local fs = require("limekit.fs")
+    local Paths = require "app.core.config.paths"
+
+    local section = ui.VLayout()
+    section:setContentAlignment('hcenter')
+
+    local header = ui.Label('<strong>Your projects</strong>')
+    header:setTextAlignment('center')
+
+    projectsList = ui.ListBox()
+    projectsList:setMinWidth(420)
+    projectsList:setMaxWidth(560)
+    projectsList:setMaxHeight(220)
+    projectsList:setOnItemDoubleClick(function(_, folder)
+        local ProjectManager = require "app.core.project_manager"
+        local appJSON = fs.FileSystem.joinPaths(
+            fs.FileSystem.joinPaths(Paths.limekitProjectsFolder, folder), 'app.json')
+        ProjectManager.loadProject(appJSON)
+    end)
+
+    local hint = ui.Label('double-click to open')
+    hint:setTextSize(9)
+    hint:setTextAlignment('center')
+
+    section:addChild(header)
+    section:addChild(projectsList)
+    section:addChild(hint)
+    return section
+end
+
+local function footer()
+    local label = ui.Label('Built with LOVE from Malawi (warm heart of Africa)')
+    label:setBold(true)
+    label:setTextColor('#2979FF')
+    label:setTextSize(10)
+    label:setTextAlignment({ 'hcenter', 'bottom' })
+    return label
+end
+
+function WelcomeView.create()
+    local layout = ui.VLayout()
+    layout:setContentAlignment('hcenter')
+    layout:setMargins(24, 24, 24, 24)
 
     layout:addStretch()
-    layout:addChild(WelcomeView._createFooter())
+    layout:addLayout(heading())
+    layout:addLayout(actionRow())
+    layout:addLayout(projectsSection())
+    layout:addStretch()
+    layout:addLayout(linkRow())
+    layout:addChild(footer())
 
     return layout
 end
 
-function WelcomeView._createFeatureCards()
-    local featuresLayout = ui.HLayout()
-    local featureItems = {
-        { image = 'homepage/modern.png',   text = 'Develop modern UI' },
-        { image = 'homepage/lua_logo.png', text = 'Developed in lua' },
-        { image = 'homepage/hundred.png',  text = 'Free for everyone' },
-        { image = 'homepage/battery.png',  text = 'Batteries Included' },
-        { image = 'homepage/bug.png',      text = 'Please report bugs' },
-        { image = 'homepage/support.png',  text = '<strong>Support this project', highlight = true }
-    }
-
-    for _, item in ipairs(featureItems) do
-        featuresLayout:addChild(WelcomeView._createFeatureCard(
-            res.Resources.images(item.image),
-            item.text,
-            item.highlight
-        ))
-    end
-
-    return featuresLayout
-end
-
-function WelcomeView._createFeatureCard(imagePath, text, highlight)
-    local card = ui.GroupBox()
-    local cardLayout = ui.VLayout()
-
-    local image = ui.Image(imagePath)
-    image:setImageAlignment('center')
-    image:setImageSize(80, 80)
-
-    local label = ui.Label(text)
-    label:setTextSize(9)
-    label:setTextAlignment('center')
-
-    if highlight then
-        label:setTextColor('#307DE1')
-    end
-
-    cardLayout:addChild(image)
-    cardLayout:addChild(label)
-    card:setLayout(cardLayout)
-
-    return card
-end
-
-function WelcomeView._createFooter()
-    local footer = ui.Label('Built with LOVE from Malawi (warm heart of Africa)')
-    footer:setBold(true)
-    footer:setTextColor('#2979FF')
-    footer:setTextSize(10)
-    footer:setTextAlignment({ 'hcenter', 'bottom' })
-    return footer
+--- The project list on the empty state. ProjectManager fills this and the
+--- dock from one place, so the two can never disagree.
+function WelcomeView.getProjectsList()
+    return projectsList
 end
 
 return WelcomeView

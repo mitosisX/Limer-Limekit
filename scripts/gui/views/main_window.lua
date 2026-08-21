@@ -19,6 +19,7 @@ local Dockables = require "gui.dockables.init"
 local MainToolbar = require "gui.toolbars.toolbar"
 local MainMenu = require "gui.menus.main"
 local WelcomeView = require "gui.views.homepage.welcome"
+local ApiPalette = require "gui.modals.api_palette"
 
 local MainWindow = {}
 
@@ -68,10 +69,7 @@ function MainWindow.create()
 
     window:setMenubar(menu.menubar)
     window:addToolbar(toolbar.toolbar)
-    window:addDockable(dockables.widgetsDock, 'left')
-    window:addDockable(dockables.appUtilsDock, 'left')
-    window:addDockable(dockables.pyUtilsDock, 'left')
-    window:addDockable(dockables.appFolderDock.appFolderDock, 'right')
+    window:addDockable(dockables.projectFilesDock.dock, 'left')
     window:addDockable(dockables.userProjectsListDock.userProjectsListDock, 'right')
 
     homeStackedWidget:addLayout(WelcomeView.create())
@@ -98,6 +96,10 @@ function MainWindow.create()
     end)
 
     Styles.applyProjectListBoxStyles(Theme.active)
+
+    -- Ctrl+K. Held on the App table because a KeyboardShortcut whose only
+    -- reference is a local dies with this function.
+    App.apiPaletteShortcut = ApiPalette.attach(window)
 
     App.markInitialized()
 

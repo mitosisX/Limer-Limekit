@@ -16,14 +16,23 @@ local App = require "app.core.app"
 
 local ProjectRunner = {
     process = nil,
-    ui = nil,
+    observers = {},
     ticker = nil,
     startedAt = nil,
     projectName = nil,
 }
 
-function ProjectRunner.init(dependencies)
-    ProjectRunner.ui = dependencies.ui
+-- More than one thing shows run state now -- the toolbar's Run/Stop button
+-- and the project page's -- so this is a list rather than the single `ui`
+-- hook it used to be. Observers are called after AppState has been updated.
+function ProjectRunner.observe(handler)
+    ProjectRunner.observers[#ProjectRunner.observers + 1] = handler
+end
+
+local function notify()
+    for _, handler in ipairs(ProjectRunner.observers) do
+        handler(AppState.projectIsRunning)
+    end
 end
 
 local function basename(path)
@@ -98,20 +107,14 @@ function ProjectRunner.run(projectPath)
     ProjectRunner.process:setOnProcessStarted(function()
         ProjectRunner._handleStart(projectPath)
         AppState.projectIsRunning = true
-
-        if ProjectRunner.ui then
-            ProjectRunner.ui.updateRunState()
-        end
+        notify()
     end)
 
     ProjectRunner.process:setOnProcessFinished(function(exitCode, crashed)
         ProjectRunner._handleStop(exitCode, crashed)
         AppState.projectIsRunning = false
         ProjectRunner.process = nil
-
-        if ProjectRunner.ui then
-            ProjectRunner.ui.updateRunState()
-        end
+        notify()
     end)
 
     -- Said before the process starts, so a project that fails to launch at

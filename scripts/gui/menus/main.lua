@@ -5,9 +5,9 @@ local ui  = require("limekit.ui")
 local res = require("limekit.res")
 local sys = require("limekit.sys")
 
-local Navigation = require "gui.navigation"
 local Theme = require "app.core.theme"
 local AppState = require "app.core.app_state"
+local App = require "app.core.app"
 
 local MainMenu = {}
 
@@ -77,6 +77,12 @@ function MainMenu.create()
                 },
                 { label = '-' },
                 {
+                    label = 'Close Project',
+                    shortcut = "Ctrl+W",
+                    click = function() ProjectManager.closeProject() end
+                },
+                { label = '-' },
+                {
                     label = 'Exit',
                     icon = res.Resources.images('exit.png'),
                     click = function() sys.System.exit() end
@@ -88,10 +94,13 @@ function MainMenu.create()
             name = 'view',
             submenu = {
                 {
-                    label = "Home Page",
-                    click = Navigation.returnHomePage,
-                    shortcut = "Ctrl+H"
+                    label = "Limekit API...",
+                    shortcut = "Ctrl+K",
+                    click = function()
+                        require("gui.modals.api_palette").show(App.window)
+                    end
                 },
+                { label = "-" },
                 {
                     label = "Theme",
                     submenu = {

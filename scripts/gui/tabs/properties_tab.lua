@@ -22,7 +22,8 @@ function PropertiesTab.create()
 
     local function setupMainContainer()
         local groupBox = ui.GroupBox()
-        groupBox:setFixedSize(500, 400)
+        groupBox:setMinWidth(520)
+        groupBox:setMinHeight(360)
         ui.DropShadow(groupBox)
         groupBox:setLayout(self.contentLayout)
         self.mainLayout:addChild(groupBox)
@@ -141,7 +142,10 @@ function PropertiesTab.create()
 
     local function initComponents()
         self.view:setLayout(self.mainLayout)
-        self.mainLayout:setContentAlignment('vcenter', 'center')
+        -- Top-anchored for the same reason as the project page: a fixed card
+        -- centred in a maximised window is mostly empty window.
+        self.mainLayout:setContentAlignment('top', 'hcenter')
+        self.mainLayout:setMargins(24, 24, 24, 24)
         setupMainContainer()
         setupPathsSection()
         setupRoutesSection()
