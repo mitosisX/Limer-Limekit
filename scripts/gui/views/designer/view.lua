@@ -132,6 +132,9 @@ local function mutate(fn, status)
     S.undo:push(draft)
     S.dirty = true
     refreshAll()
+    -- What is selected afterwards is what changed: the widget just added,
+    -- moved or edited, or the container something was just taken out of.
+    S.surface:flash(S.canvas:widgetFor(S.selected))
     if status then setStatus(status) end
     return true
 end
@@ -632,7 +635,7 @@ function DesignerView.create()
     }
 
     S.palette = ui.WidgetPalette()
-    S.palette:setMinWidth(170)
+    S.palette:setMinWidth(150)
     S.palette:setMaxWidth(260)
     S.palette:setOnPick(addClass)
 
@@ -659,13 +662,18 @@ function DesignerView.create()
     side:addTab(tree, "Outline")
     side:addTab(table_, "Properties")
     side:addTab(code, "Code")
-    side:setMinWidth(320)
+    side:setMinWidth(260)
+    scroller:setMinWidth(200)
 
+    -- The canvas takes every pixel the palette and the side pane do not
+    -- need. setSizes is in pixels and only a starting point; the stretch
+    -- factors are what keep the canvas the one that grows.
     local split = ui.Splitter("horizontal")
     split:addChild(S.palette)
     split:addChild(scroller)
     split:addChild(side)
-    split:setSizes({ 18, 52, 30 })
+    split:setStretchFactors({ 0, 1, 0 })
+    split:setSizes({ 200, 900, 360 })
 
     local layout = ui.VLayout()
     layout:addLayout(buildToolbar())
