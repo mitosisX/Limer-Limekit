@@ -46,9 +46,12 @@ function Properties:rowsFor(node, widget)
     end
 
     row("name", node.name, "string", function(v) cb.onRename(node, v) end)
-    if DesignModel.isContainer(node) then
+    if DesignModel.hasLayout(node) then
         row("layout", node.layout:match("%.(.+)$"), "enum",
             function(v) cb.onLayout(node, "ui." .. v) end, LAYOUT_NAMES)
+    end
+    if node.tab then
+        row("tab.title", node.tab.title, "string", function(v) cb.onPlacement(node, "tab.title", v) end)
     end
     if node.grid then
         for _, f in ipairs({ "row", "column", "rowSpan", "columnSpan" }) do

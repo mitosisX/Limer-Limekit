@@ -310,7 +310,7 @@ function callbacks.onProp(node, name, value)
         -- The live widget is asked first: it coerces, validates, and reads
         -- back what it actually holds, which is what the model records.
         local widget = S.canvas:widgetFor(node)
-        local ok, result = pcall(sys.Introspect.setProperty, widget, name, value)
+        local ok, result = Canvas.apply(widget, name, value)
         if not ok then return false, "could not set " .. name .. ": " .. tostring(result) end
         n.props[name] = result
         return true
@@ -354,6 +354,107 @@ function callbacks.onPlacement(node, field, value)
         end
         return true
     end, field .. " = " .. tostring(value))
+end
+
+--- A handle drag sets a minimum size: inside a layout, that is the size
+--- control that means something, and it is what the generated code sets.
+function callbacks.onResize(widget, width, height)
+    local node = S.canvas:nodeFor(widget)
+    if not node or node.kind then return end
+    local path = pathOf(S.design, node)
+    mutate(function(d)
+        local n = nodeAt(d, path)
+        if not n then return false, "gone" end
+        n.props.minWidth, n.props.minHeight = width, height
+        return true
+    end, node.name .. " min size " .. width .. "x" .. height)
+end
+
+-- The property a double-click edits: the first one the widget has.
+local TEXT_PROPS = { "text", "title", "hint", "plainText" }
+
+function callbacks.onDoubleClick(widget)
+    local node = S.canvas:nodeFor(widget)
+    if not node or node.kind then return end
+    select(node)
+    local ok, props = pcall(sys.Introspect.properties, widget)
+    if not ok then return end
+    local byName = {}
+    for _, p in ipairs(props) do byName[p.name] = p end
+    for _, name in ipairs(TEXT_PROPS) do
+        local p = byName[name]
+        if p and p.settable and (p.type == "str" or p.type == "nil") then
+            local text = ui.Dialogs.textInput(App.window, node.name, name .. ":", tostring(p.value or ""))
+            if text ~= nil then callbacks.onProp(node, name, text) end
+            return
+        end
+    end
+    setStatus(node.name .. " has no text to edit; use Properties")
+end
+
+local function copySelected()
+    local node = S.selected
+    if not node or node == S.design.root or node.kind then
+        setStatus("select a widget to copy")
+        return false
+    end
+    sys.System.setClipboardText(DesignModel.fragment(node))
+    setStatus("copied " .. node.name)
+    return true
+end
+
+local function cutSelected()
+    if copySelected() then deleteSelected() end
+end
+
+-- Pastes into the selection if it can hold things, else beside it.
+local function pasteClipboard()
+    local text = sys.System.getClipboardText()
+    if not text or not text:match("^%s*return%s*{") then
+        setStatus("the clipboard holds no design fragment")
+        return
+    end
+    mutate(function(d, selected)
+        local parent, slot
+        if DesignModel.isContainer(selected) then
+            parent, slot = selected, {}
+        elseif selected then
+            parent = DesignModel.parentOf(d, selected)
+            slot = { index = DesignModel.indexOf(parent, selected) + 1 }
+        else
+            parent, slot = d.root, {}
+        end
+        local node, why = DesignModel.paste(d, parent, text, slot)
+        if not node then return false, why end
+        return true, nil, pathOf(d, node)
+    end, "pasted")
+end
+
+local function duplicateSelected()
+    local node = S.selected
+    if not node or node == S.design.root or node.kind then
+        setStatus("select a widget to duplicate")
+        return
+    end
+    local text = DesignModel.fragment(node)
+    mutate(function(d, selected)
+        local parent = DesignModel.parentOf(d, selected)
+        local slot = { index = DesignModel.indexOf(parent, selected) + 1 }
+        if selected.grid then slot = { row = selected.grid.row + 1, column = selected.grid.column } end
+        local copy, why = DesignModel.paste(d, parent, text, slot)
+        if not copy then return false, why end
+        return true, nil, pathOf(d, copy)
+    end, "duplicated " .. node.name)
+end
+
+local function addPage()
+    mutate(function(d, selected)
+        if not selected or selected.layout ~= "tab" then return false, "select a Tab first" end
+        local page = DesignModel.container("ui.VLayout")
+        local ok, why = DesignModel.insert(d, selected, page, {})
+        if not ok then return false, why end
+        return true, nil, pathOf(d, page)
+    end, "added a page")
 end
 
 function callbacks.onLayout(node, layout)
@@ -480,6 +581,22 @@ local function generate()
         "The designer never reads this file back; regenerate rather than edit it.")
 end
 
+--- Runs the design as a real window, through the same runner as Run.
+local function runPreview()
+    if not project() then warn("open a project first"); return end
+    local ProjectRunner = require "app.core.project_runner"
+    if AppState.projectIsRunning then
+        warn("a project is already running -- stop it first")
+        return
+    end
+    applyWindowFields()
+    local source = DesignModel.generate(S.design, S.name)
+    local path, why = Files.writePreview(project(), S.name, source)
+    if not path then warn("could not write the preview: " .. tostring(why)); return end
+    setStatus("running " .. S.name)
+    ProjectRunner.run(path)
+end
+
 local function onProjectOpened()
     if S.dirty and not confirmDiscard() then return end
     local names = Files.list(project())
@@ -512,10 +629,16 @@ local function buildContextMenu()
     item(menu, "Wrap in a row", function() wrapSelected("ui.HLayout") end, isWidget and not isRoot)
     item(menu, "Wrap in a column", function() wrapSelected("ui.VLayout") end, isWidget and not isRoot)
     item(menu, "Unwrap", unwrapSelected, isBox and not isRoot and #node.children == 1)
+    item(menu, "Add page", addPage, node ~= nil and node.layout == "tab")
+    menu:addSeparator()
+    item(menu, "Cut", cutSelected, isWidget and not isRoot)
+    item(menu, "Copy", copySelected, isWidget and not isRoot)
+    item(menu, "Paste", pasteClipboard)
+    item(menu, "Duplicate", duplicateSelected, isWidget and not isRoot)
     menu:addSeparator()
     local layouts = ui.Menu("Change layout")
     for _, class in ipairs(DesignModel.LAYOUTS) do
-        item(layouts, short(class), function() changeLayout(class) end, isBox)
+        item(layouts, short(class), function() changeLayout(class) end, DesignModel.hasLayout(node))
     end
     menu:addMenu(layouts)
     menu:addSeparator()
@@ -564,6 +687,7 @@ local function buildToolbar()
     end)
     separator(row)
     button(row, "Generate", "Write the design out as scripts/designed/<name>.lua (Ctrl+G)", generate)
+    button(row, "Run", "Show the design as a real window (Ctrl+R)", runPreview)
     row:addStretch()
     return row
 end
@@ -620,6 +744,11 @@ local function installShortcuts()
         bind("Ctrl+N", function() if confirmDiscard() then newDesign(); refreshPicker() end end),
         bind("Ctrl+Up", function() moveSelected(-1) end),
         bind("Ctrl+Down", function() moveSelected(1) end),
+        bind("Ctrl+C", copySelected),
+        bind("Ctrl+X", cutSelected),
+        bind("Ctrl+V", pasteClipboard),
+        bind("Ctrl+D", duplicateSelected),
+        bind("Ctrl+R", runPreview),
     }
 end
 
@@ -646,6 +775,8 @@ function DesignerView.create()
         local menu = buildContextMenu()
         menu:popupAt(S.surface, x, y)
     end)
+    S.surface:setOnResize(callbacks.onResize)
+    S.surface:setOnDoubleClick(function(widget) callbacks.onDoubleClick(widget) end)
     local scroller = ui.Scroller()
     scroller:setChild(S.surface)
     scroller:setResizable(true)
@@ -704,6 +835,10 @@ function DesignerView.create()
         redo = function() restore(S.undo:redo(), "redo") end,
         newDesign = newDesign,
         generate = generate,
+        runPreview = runPreview,
+        copySelected = copySelected,
+        pasteClipboard = pasteClipboard,
+        duplicateSelected = duplicateSelected,
         getStatus = function() return S.status:getText() end,
     }
 end

@@ -29,6 +29,13 @@
 -- Rows and columns can also hold two things that are not widgets:
 --   { kind = "stretch", stretch = 1 }   { kind = "spacing", size = 12 }
 --
+-- Three widgets hold children without a layout, and carry a holder kind
+-- in `layout` instead of a layout class:
+--   ui.Tab       layout = "tab"       children are pages, each a container
+--                                     with tab = { title = "Page 1" }
+--   ui.Splitter  layout = "splitter"  children are panes, any widget
+--   ui.Scroller  layout = "scroller"  one child, any widget
+--
 -- Every mutating function returns true, or false and a reason, and never
 -- half-applies: a refused change leaves the design as it was.
 
@@ -39,7 +46,17 @@ DesignModel.LAYOUTS = { "ui.VLayout", "ui.HLayout", "ui.GridLayout", "ui.FormLay
 local KINDS = {
     ["ui.VLayout"] = "vbox", ["ui.HLayout"] = "hbox",
     ["ui.GridLayout"] = "grid", ["ui.FormLayout"] = "form",
+    tab = "tab", splitter = "splitter", scroller = "scroller",
 }
+
+-- Widgets that are containers by nature, and how they hold.
+local HOLDERS = { ["ui.Tab"] = "tab", ["ui.Splitter"] = "splitter", ["ui.Scroller"] = "scroller" }
+
+--- True for a container whose layout is a real ui.* layout class, as
+--- opposed to a Tab, Splitter or Scroller holding children its own way.
+function DesignModel.hasLayout(node)
+    return node ~= nil and node.children ~= nil and node.layout ~= nil and node.layout:sub(1, 3) == "ui."
+end
 
 --- "vbox", "hbox", "grid" or "form" for a layout class; nil otherwise.
 function DesignModel.layoutKind(layout) return KINDS[layout] end
@@ -55,7 +72,11 @@ end
 -- NODES ---------------------------------------------------------------------
 
 function DesignModel.node(class)
-    return { class = class, props = {} }
+    local node = { class = class, props = {} }
+    if HOLDERS[class] then
+        node.layout, node.children = HOLDERS[class], {}
+    end
+    return node
 end
 
 function DesignModel.container(layout)
@@ -151,7 +172,11 @@ end
 local function clearPlacement(node)
     -- A stretch item's `stretch` is what it is, not where it sits.
     if DesignModel.isPseudo(node) then return end
-    node.grid, node.form, node.stretch = nil, nil, nil
+    node.grid, node.form, node.stretch, node.tab = nil, nil, nil, nil
+end
+
+local function pageTitle(parent)
+    return ("Page %d"):format(#parent.children + 1)
 end
 
 local function cellTaken(parent, row, column, except)
@@ -184,9 +209,26 @@ local function place(parent, node, slot, except)
         return #parent.children + 1
     end
 
+    if kind == "scroller" then
+        local held = #parent.children - (except and DesignModel.indexOf(parent, except) and 1 or 0)
+        if held >= 1 then return nil, "a scroller holds one widget; wrap it to hold more" end
+        clearPlacement(node)
+        return 1
+    end
+
+    if kind == "tab" and not DesignModel.isContainer(node) then
+        -- The caller (insert, move) wraps a plain widget in a page first;
+        -- reaching here with one is a bug, not a user error.
+        return nil, "a tab holds pages"
+    end
+
     clearPlacement(node)
     if kind == "form" then
         node.form = { label = node.name or "" }
+    elseif kind == "tab" then
+        node.tab = { title = pageTitle(parent) }
+    elseif kind == "splitter" then
+        -- nothing to record: a pane is just a child in order
     elseif not pseudo then
         node.stretch = 0
     end
@@ -194,12 +236,27 @@ local function place(parent, node, slot, except)
     return math.max(1, math.min(index, #parent.children + 1))
 end
 
+-- A tab holds pages. A widget dropped on one gets a page made around it,
+-- unless it is a container already, which becomes the page itself.
+local function asPage(design, parent, node)
+    if KINDS[parent.layout] ~= "tab" or DesignModel.isContainer(node) then return node end
+    local page = DesignModel.container("ui.VLayout")
+    page.name = DesignModel.nameFor(design, "ui.Container")
+    node.stretch = 0
+    page.children[1] = node
+    return page
+end
+
 --- Puts a node into a container. slot = { index = } or { row =, column = }.
 function DesignModel.insert(design, parent, node, slot)
     if not DesignModel.isContainer(parent) then return false, "not a container" end
+    if DesignModel.isPseudo(node) and KINDS[parent.layout] ~= "vbox" and KINDS[parent.layout] ~= "hbox" then
+        return false, "stretch and spacing only belong in a row or column"
+    end
     if not DesignModel.isPseudo(node) and not node.name then
         node.name = DesignModel.nameFor(design, node.class)
     end
+    node = asPage(design, parent, node)
     local index, why = place(parent, node, slot or {})
     if not index then return false, why end
     table.insert(parent.children, index, node)
@@ -215,10 +272,11 @@ function DesignModel.move(design, node, parent, slot)
     if not oldParent then return false, "not in the design" end
 
     local oldIndex = DesignModel.indexOf(oldParent, node)
-    local saved = { grid = node.grid, form = node.form, stretch = node.stretch }
-    local index, why = place(parent, node, slot or {}, node)
+    local saved = { grid = node.grid, form = node.form, stretch = node.stretch, tab = node.tab }
+    local moved = asPage(design, parent, node)
+    local index, why = place(parent, moved, slot or {}, node)
     if not index then
-        node.grid, node.form, node.stretch = saved.grid, saved.form, saved.stretch
+        node.grid, node.form, node.stretch, node.tab = saved.grid, saved.form, saved.stretch, saved.tab
         return false, why
     end
 
@@ -227,7 +285,7 @@ function DesignModel.move(design, node, parent, slot)
     -- everything after it has shifted up one.
     if parent == oldParent and index > oldIndex then index = index - 1 end
     index = math.min(index, #parent.children + 1)
-    table.insert(parent.children, index, node)
+    table.insert(parent.children, index, moved)
     return true
 end
 
@@ -280,7 +338,12 @@ end
 --- are dropped when leaving a box, since nothing else can hold them.
 function DesignModel.setLayout(design, box, layout)
     if not DesignModel.isContainer(box) then return false, "not a container" end
-    if not KINDS[layout] then return false, "unknown layout " .. tostring(layout) end
+    if not DesignModel.hasLayout(box) then
+        return false, (box.class:match("%.(.+)$") or box.class) .. " holds children its own way"
+    end
+    if not KINDS[layout] or not layout:match("^ui%.") then
+        return false, "unknown layout " .. tostring(layout)
+    end
     local old, new = KINDS[box.layout], KINDS[layout]
 
     if old == "grid" then
@@ -414,6 +477,40 @@ function DesignModel.deserialize(source)
     return design
 end
 
+--- A subtree as Lua source, for the clipboard.
+function DesignModel.fragment(node)
+    local out = { "return " }
+    emitTable(node, 0, out)
+    out[#out + 1] = "\n"
+    return table.concat(out)
+end
+
+--- Puts a fragment (from `fragment`) into a container. Every widget in it
+--- gets a fresh unique name, so a fragment pastes into any design, any
+--- number of times. Returns the new node.
+function DesignModel.paste(design, parent, source, slot)
+    local chunk, err = load(source, "fragment", "t", {})
+    if not chunk then return nil, err end
+    local ok, node = pcall(chunk)
+    if not ok then return nil, tostring(node) end
+    local valid, why = checkNode(node, "fragment")
+    if not valid then return nil, why end
+    if DesignModel.isPseudo(node) then return nil, "nothing to paste" end
+
+    -- Old names go first, or nameFor would count the fragment's own names
+    -- as taken -- they are not in the design yet.
+    local named = {}
+    DesignModel.walk(node, function(n)
+        if n.name then named[#named + 1] = n; n.name = nil end
+    end)
+    for _, n in ipairs(named) do n.name = DesignModel.nameFor(design, n.class) end
+
+    local inserted, reason = DesignModel.insert(design, parent, node, slot)
+    if not inserted then return nil, reason end
+    return DesignModel.parentOf(design, node) and node
+        or parent.children[#parent.children]   -- became a page
+end
+
 --- A deep copy. Undo keeps whole designs rather than reversible commands:
 --- the trees are small, and a copy cannot be undone wrongly.
 function DesignModel.snapshot(value)
@@ -486,8 +583,23 @@ local function emitLayouts(node, lines)
     if not DesignModel.isContainer(node) then return end
     for _, child in ipairs(node.children) do emitLayouts(child, lines) end
 
-    local L = node.name .. "Layout"
     local kind = KINDS[node.layout]
+    if not DesignModel.hasLayout(node) then
+        if #node.children > 0 then lines[#lines + 1] = "" end
+        for _, child in ipairs(node.children) do
+            if kind == "tab" then
+                lines[#lines + 1] = ("M.%s:addTab(M.%s, %s)"):format(
+                    node.name, child.name, literal((child.tab or {}).title or ""))
+            elseif kind == "splitter" then
+                lines[#lines + 1] = ("M.%s:addChild(M.%s)"):format(node.name, child.name)
+            else
+                lines[#lines + 1] = ("M.%s:setChild(M.%s)"):format(node.name, child.name)
+            end
+        end
+        return
+    end
+
+    local L = node.name .. "Layout"
     lines[#lines + 1] = ""
     lines[#lines + 1] = ("local %s = %s()"):format(L, node.layout)
     for _, child in ipairs(node.children) do

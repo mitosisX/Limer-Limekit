@@ -56,6 +56,29 @@ function Files.writeGenerated(project, name, source)
     return path
 end
 
+--- A throwaway project that shows the design and nothing else, so the
+--- normal project runner can run it. Lives under design/.preview/ so it
+--- travels with the project and is easy to delete. Returns its path.
+function Files.writePreview(project, name, source)
+    local dir = FS.joinPaths(designDir(project), ".preview")
+    local scripts = FS.joinPaths(dir, "scripts")
+    local designed = FS.joinPaths(scripts, "designed")
+    for _, folder in ipairs({ designDir(project), dir, scripts, designed }) do
+        if not FS.exists(folder) then FS.createFolder(folder) end
+    end
+    local ok, err = pcall(function()
+        FS.writeFile(FS.joinPaths(dir, "app.json"),
+            '{ "api": "2.0", "project": { "name": "' .. name .. ' (preview)", "version": "0" }, "files": { "aliases": {} } }\n')
+        FS.writeFile(FS.joinPaths(designed, name .. ".lua"), source)
+        FS.writeFile(FS.joinPaths(scripts, "main.lua"),
+            "-- Preview written by Limer's designer. Delete freely.\n" ..
+            'local design = require("designed.' .. name .. '")\n' ..
+            "design.window:show()\n")
+    end)
+    if not ok then return nil, tostring(err) end
+    return dir
+end
+
 --- A design name is a module name, so it has to be a Lua identifier.
 function Files.validName(name)
     return type(name) == "string" and name:match("^[%a_][%w_]*$") ~= nil

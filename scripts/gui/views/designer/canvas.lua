@@ -43,6 +43,21 @@ local function className(class)
     return class:match("%.(.+)$") or class
 end
 
+--- Sets one property the way the generated code will: through the
+--- declared property if there is one, else the plain setter (minWidth and
+--- minHeight are methods, not declared properties). Returns ok, result.
+function Canvas.apply(widget, name, value)
+    local ok, result = pcall(sys.Introspect.setProperty, widget, name, value)
+    if ok then return true, result end
+    local setter = widget["set" .. name:sub(1, 1):upper() .. name:sub(2)]
+    if type(setter) ~= "function" and type(setter) ~= "userdata" then
+        return false, "no property " .. name
+    end
+    local called, err = pcall(setter, widget, value)
+    if not called then return false, tostring(err) end
+    return true, value
+end
+
 -- A widget that could not be built still needs a place on the canvas, or
 -- the node it stands for could never be selected and deleted.
 local function placeholder(node, err)
@@ -69,11 +84,28 @@ function Canvas:build(node)
     end
 
     for name, value in pairs(node.props or {}) do
-        pcall(sys.Introspect.setProperty, widget, name, value)
+        Canvas.apply(widget, name, value)
     end
     self.widgetOf[node], self.nodeOf[widget] = widget, node
 
-    if ok and DesignModel.isContainer(node) then
+    if ok and DesignModel.isContainer(node) and not DesignModel.hasLayout(node) then
+        -- Tab, Splitter, Scroller: children go in their own way.
+        local kind = node.layout
+        for _, child in ipairs(node.children) do
+            local built = self:build(child)
+            if kind == "tab" then
+                widget:addTab(built, (child.tab or {}).title or "")
+            elseif kind == "splitter" then
+                widget:addChild(built)
+            else
+                widget:setChild(built)
+            end
+        end
+        if #node.children == 0 then
+            widget:setMinHeight(64)
+            widget:setMinWidth(96)
+        end
+    elseif ok and DesignModel.isContainer(node) then
         local layout = ui[className(node.layout)]()
         local kind = DesignModel.layoutKind(node.layout)
         for _, child in ipairs(node.children) do
