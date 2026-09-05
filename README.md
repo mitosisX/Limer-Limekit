@@ -60,12 +60,20 @@ instead of pressing it.
 
 **Layouts, not coordinates.** A widget lands *in a row, column, grid or
 form*, at the slot the orange indicator shows, rather than at an x and a y.
-That is what makes a designed window survive being resized. Drag a placed
-widget to move it. Right-click (or the More... button) for wrap, unwrap,
-change layout, stretch and spacing. The Outline tab shows the tree, the
-Properties tab edits the selection -- its name, where it sits, and every
-property its widget declares -- and the Code tab shows the Lua that would
-be generated, kept current. Ctrl+Z undoes; Delete deletes.
+That is what makes a designed window survive being resized. A Tab, Splitter
+or Scroller is a drop target too: a widget dropped on a Tab gets a page made
+around it. Drag a placed widget to move it; drag a selection handle to set
+its minimum size; double-click to edit its text. Right-click (or the
+More... button) for wrap, unwrap, change layout, add page, stretch,
+spacing, and cut, copy, paste and duplicate -- a copied widget travels as
+Lua on the clipboard and pastes into any design. The Outline tab shows the
+tree, the Properties tab edits the selection -- its name, where it sits,
+and every property its widget declares -- and the Code tab shows the Lua
+that would be generated, kept current. Ctrl+Z undoes; Delete deletes.
+
+**Run** (Ctrl+R) shows the design as a real window: a throwaway project is
+written under `design/.preview/` and started through the ordinary project
+runner, so the console and the Inspector work on it.
 
 **Designs are saved** to `design/<name>.design.lua` in the project, one per
 window, and reopened from the picker above the canvas. **Generate** writes
