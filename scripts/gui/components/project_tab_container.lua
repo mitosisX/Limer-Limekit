@@ -14,18 +14,14 @@ function ProjectWorkspace.create(appTab, propertiesTab, designerTab)
         self.tabs:addTab(appTab.view, "Application")
         self.tabs:addTab(propertiesTab.view, "Properties")
 
-        -- The Designer is built but not shown. What it does today is edit a
-        -- tree through buttons and render the result beside it, which is not
-        -- what anyone means by a designer: there is no dragging onto the
-        -- canvas, nothing can be moved or resized by hand, and there is no
-        -- preview of the code it would write. Showing it invites the
-        -- comparison with Qt Designer that it loses.
-        --
-        -- Kept rather than deleted because the parts underneath it are
-        -- sound -- ui.DesignSurface, sys.Introspect, and one-way generation
-        -- that produces a file that runs. Add the tab back when the canvas
-        -- earns it.
-        -- self.tabs:addTab(designerTab.view, "Designer")
+        self.tabs:addTab(designerTab.view, "Designer")
+        -- The designer marks its tab with the design's name and a * while
+        -- it has unsaved changes; only this module knows the tab's index.
+        if designerTab.setTabTitleSetter then
+            designerTab.setTabTitleSetter(function(title)
+                self.tabs:setTabText(3, title)
+            end)
+        end
     end
 
     initTabs()

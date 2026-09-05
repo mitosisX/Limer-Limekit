@@ -61,6 +61,9 @@ function ProjectManager.loadProject(projectFile)
     if App.propertiesTab and App.propertiesTab.refresh then
         App.propertiesTab.refresh()
     end
+    if App.designerTab and App.designerTab.onProjectOpened then
+        App.designerTab.onProjectOpened(fileFolderLocation)
+    end
 end
 
 function ProjectManager._updateUI(appTabInstance)

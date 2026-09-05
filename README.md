@@ -53,31 +53,39 @@ strings included.
 
 ### The Designer
 
-Pick widgets from a palette, arrange them in rows and columns, edit their
-properties, and write the result out as Lua.
+Drag widgets from the palette on the left onto the canvas. The canvas holds
+real Limekit widgets running inside Limer -- not pictures of them and not a
+preview -- made inert by `ui.DesignSurface`, so a click selects a button
+instead of pressing it.
 
-The widgets on the canvas are real Limekit widgets running inside Limer —
-not pictures of them and not a preview. What stops a designed button being
-pressed when you mean to select it is `ui.DesignSurface`, which takes the
-whole design out of the mouse's reach without changing how any of it draws.
+**Layouts, not coordinates.** A widget lands *in a row, column, grid or
+form*, at the slot the orange indicator shows, rather than at an x and a y.
+That is what makes a designed window survive being resized. Drag a placed
+widget to move it. Right-click (or the More... button) for wrap, unwrap,
+change layout, stretch and spacing. The Outline tab shows the tree, the
+Properties tab edits the selection -- its name, where it sits, and every
+property its widget declares -- and the Code tab shows the Lua that would
+be generated, kept current. Ctrl+Z undoes; Delete deletes.
 
-**Generation is one way.** The design is the source of truth and it writes
-`scripts/designed.lua`; it never touches your `main.lua` and never reads its
-own output back. Edit the design, or edit the file — not both expecting them
-to meet. This is the same bargain Qt Designer strikes with `.ui`, and for the
-same reason: reconciling generated code with hand-edited code is what kills
-these tools.
+**Designs are saved** to `design/<name>.design.lua` in the project, one per
+window, and reopened from the picker above the canvas. **Generate** writes
+`scripts/designed/<name>.lua`: a module that returns its window and every
+widget by name, so `main.lua` requires it and wires handlers on:
 
-Layouts, not coordinates: a widget goes *into a row or a column*, at a
-position, rather than at an x and a y. That is what makes a designed window
-survive being resized.
+    local login = require("designed.login")
+    login.ok:setOnClick(function() print("hello, " .. login.name:getText()) end)
+    login.window:show()
 
-### No widget palette in the dock
+**Generation is one way.** The design file is the source of truth; the
+designer never reads the generated module back and never touches
+`main.lua`. Regenerate rather than edit. This is the same bargain Qt
+Designer strikes with `.ui`, and for the same reason: reconciling generated
+code with hand-edited code is what kills these tools.
 
-There is no widget palette down the side of the window. Limer had one for a long time and it caused more
-confusion than it solved: a list of widget names down the left edge reads as
-a drag-and-drop toolbox in every other IDE, and there is no canvas here to
-drag onto. Ctrl+K makes no such promise.
+The framework side -- `ui.DesignSurface`, `ui.WidgetPalette` and
+`sys.Introspect` -- lives in Limekit; Limer owns the model, the files and
+the generator (`scripts/app/core/design_model.lua`), whose checks run as a
+Limekit project: `python -m limekit tests`.
 
 ## Regenerating the API index
 

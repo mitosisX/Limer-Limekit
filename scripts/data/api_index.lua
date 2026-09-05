@@ -1979,6 +1979,7 @@ return {
     { "ui.Table:setRowHeaders", "method", "setRowHeaders(headers)", "setRowHeaders(headers)", "setRowHeaders on ui.Table." },
     { "ui.Table:setSelectionBehavior", "method", "setSelectionBehavior(behavior)", "setSelectionBehavior(behavior)", "setSelectionBehavior on ui.Table." },
     { "ui.Table:setSize", "method", "setSize(width, height)", "setSize(width, height)", "setSize on ui.Table." },
+    { "ui.Table:setStretchLastColumn", "method", "setStretchLastColumn(stretch)", "setStretchLastColumn(stretch)", "Whether the last column grows to fill the table's width." },
     { "ui.Table:setWidth", "method", "setWidth(width)", "setWidth(width)", "Resizes the width, leaving the height alone." },
     { "ui.Table:show", "method", "show()", "show()", "show on ui.Table." },
     { "ui.TableItem", "class", "ui.TableItem(text)", "ui.TableItem(text)", "Creates a TableItem." },
