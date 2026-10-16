@@ -13,7 +13,7 @@ local App = {
     appTab = nil,
     propertiesTab = nil,
     inspectorTab = nil,
-    designerTab = nil,
+    designer = nil,     -- the designer window (gui/views/designer/view.lua)
     debugTab = nil,
     projectWorkspace = nil,
     console = nil,
@@ -60,8 +60,8 @@ function App.setInspectorTab(inspectorTab)
     App.inspectorTab = inspectorTab
 end
 
-function App.setDesignerTab(designerTab)
-    App.designerTab = designerTab
+function App.setDesigner(designer)
+    App.designer = designer
 end
 
 function App.setDebugTab(debugTab)

@@ -17,7 +17,8 @@ local MainMenu = {}
 -- in the module that owns it, rather than in the framework.
 --
 -- Recognised keys: label ("-" makes a separator), icon, shortcut, click,
--- disabled, submenu.
+-- disabled, submenu, and bind(entry) -- called with the made MenuItem, for
+-- an entry that has to change after it is built.
 local function buildMenu(menu, items)
     for _, item in ipairs(items) do
         if item.label == "-" then
@@ -33,6 +34,7 @@ local function buildMenu(menu, items)
             if item.shortcut then entry:setShortcut(item.shortcut) end
             if item.disabled then entry:setEnabled(false) end
             if item.click then entry:setOnClick(item.click) end
+            if item.bind then item.bind(entry) end
             menu:addMenuItem(entry)
         end
     end
@@ -105,7 +107,18 @@ function MainMenu.create()
                             name = 'light_theme',
                             label = 'Dark',
                             icon = res.Resources.images('app/dark.png'),
-                            click = Theme.toggleTheme
+                            click = Theme.toggleTheme,
+                            -- Offers whichever theme is not on, however it
+                            -- was last switched.
+                            bind = function(entry)
+                                local function paint()
+                                    local label, icon = Theme.offer()
+                                    entry:setText(label)
+                                    entry:setIcon(res.Resources.images(icon))
+                                end
+                                paint()
+                                Theme.observe(paint)
+                            end
                         }
                     }
                 }

@@ -22,7 +22,10 @@ function PropertiesTab.create()
 
     local function setupMainContainer()
         local groupBox = ui.GroupBox()
-        groupBox:setFixedSize(500, 400)
+        -- A range, not a fixed size: fixed, it held the window open at
+        -- 500px of central width whatever the screen.
+        groupBox:setMinSize(320, 320)
+        groupBox:setMaxSize(560, 440)
         ui.DropShadow(groupBox)
         groupBox:setLayout(self.contentLayout)
         self.mainLayout:addChild(groupBox)

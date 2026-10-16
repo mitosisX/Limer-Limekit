@@ -2,7 +2,6 @@
 -- Handles application theme switching (light/dark)
 
 local ui  = require("limekit.ui")
-local res = require("limekit.res")
 
 local Theme = {
     active = "light",
@@ -34,23 +33,40 @@ function Theme.init(styles)
     ui.Theme.setTheme(FAMILY, Theme.active)
 end
 
+-- Called with the theme's name after every switch. For things a palette
+-- change does not reach on its own, such as icons drawn for one background.
+local observers = {}
+
+function Theme.observe(fn)
+    observers[#observers + 1] = fn
+end
+
 function Theme.apply(themeName)
     Theme.active = themeName
     ui.Theme.setTheme(FAMILY, themeName)
     if Theme.styles then
         Theme.styles.applyProjectListBoxStyles(themeName)
     end
+    for _, fn in ipairs(observers) do fn(themeName) end
 end
 
-function Theme.toggleTheme(button)
-    local buttonText = button:getText()
-    local activeTheme = Theme.themes[buttonText]
+--- Light to dark, or dark to light. Every switch -- menu, Limer's toolbar,
+--- the designer's toolbar -- comes through here, and everything showing
+--- the theme repaints through Theme.observe, so none of them can disagree.
+function Theme.toggle()
+    Theme.apply(Theme.active == "dark" and "light" or "dark")
+end
 
-    if activeTheme and activeTheme.displayName == buttonText then
-        button:setText(activeTheme.next)
-        button:setIcon(res.Resources.images(activeTheme.icon))
-        Theme.apply(activeTheme.style)
-    end
+--- What a theme switch should offer while `active` is on: the label and
+--- icon of the other theme.
+function Theme.offer()
+    if Theme.active == "dark" then return "Light", "app/light.png" end
+    return "Dark", "app/dark.png"
+end
+
+--- The menu entry's click handler. The entry follows through observe.
+function Theme.toggleTheme()
+    Theme.toggle()
 end
 
 function Theme.getActive()

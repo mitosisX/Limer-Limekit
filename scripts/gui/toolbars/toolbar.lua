@@ -21,6 +21,8 @@ function MainToolbar.create()
         openProjectButton = ui.ToolbarButton('Open Project'),
         runButton = ui.ToolbarButton('Run'),
         buildButton = ui.ToolbarButton('Build'),
+        designerButton = ui.ToolbarButton('Designer'),
+        themeButton = ui.ToolbarButton('Dark'),
         -- One button, not two. See gui/navigation.lua.
         viewToggleButton = ui.ToolbarButton('My Project')
     }
@@ -71,6 +73,29 @@ function MainToolbar.create()
             BuildDialog.show()
         end)
 
+        -- Designs live in a project's design folder, so there has to be one.
+        self.designerButton:setIcon(res.Resources.images('designer/designer.svg'))
+        self.designerButton:setToolTip('Design windows by dragging widgets  (Ctrl+Shift+D)')
+        self.designerButton:setEnabled(false)
+        self.designerButton:setOnClick(function()
+            if AppState.activeProjectPath == nil then return end
+            local App = require "app.core.app"
+            App.designer.show()
+        end)
+
+        -- Light and dark. Offers the theme that is not on; follows a switch
+        -- made anywhere else (the View menu, the designer) through observe.
+        local Theme = require "app.core.theme"
+        local function paintThemeButton()
+            local label = Theme.offer()
+            self.themeButton:setText(label)
+            self.themeButton:setIcon(res.Resources.images('designer/' .. label:lower() .. '.svg'))
+            self.themeButton:setToolTip('Switch to the ' .. label:lower() .. ' theme')
+        end
+        self.themeButton:setOnClick(Theme.toggle)
+        paintThemeButton()
+        Theme.observe(paintThemeButton)
+
         -- Dead until there is a project to switch to. Before one is open
         -- both pages are the home page.
         self.viewToggleButton:setEnabled(false)
@@ -88,8 +113,11 @@ function MainToolbar.create()
         self.toolbar:addSeparator()
         self.toolbar:addButton(self.runButton)
         self.toolbar:addButton(self.buildButton)
+        self.toolbar:addButton(self.designerButton)
         self.toolbar:addSeparator()
         self.toolbar:addButton(self.viewToggleButton)
+        self.toolbar:addSeparator()
+        self.toolbar:addButton(self.themeButton)
     end
 
     initUI()
@@ -101,6 +129,7 @@ function MainToolbar.create()
         openProjectButton = self.openProjectButton,
         runButton = self.runButton,
         buildButton = self.buildButton,
+        designerButton = self.designerButton,
         viewToggleButton = self.viewToggleButton,
 
         --- Called once a project is open, which is when running, building
@@ -108,6 +137,7 @@ function MainToolbar.create()
         enableProjectActions = function()
             self.runButton:setEnabled(true)
             self.buildButton:setEnabled(true)
+            self.designerButton:setEnabled(true)
             self.viewToggleButton:setEnabled(true)
         end
     }

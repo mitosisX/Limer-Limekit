@@ -3,6 +3,12 @@
 -- layouts, edit their properties, save the design, and write it out as a
 -- Lua module.
 --
+-- The designer is a window of its own, opened from Limer's toolbar, not a
+-- tab: a canvas wants the whole screen, and in a window of its own its
+-- shortcuts (Ctrl+X cut, Ctrl+R run the design) stop fighting Limer's
+-- (Ctrl+X stop, Ctrl+R run the project). It still lives in Limer's process
+-- and follows Limer's open project.
+--
 -- The widgets on the canvas are real Limekit widgets in Limer's own process
 -- -- not pictures of them, and not a preview rendered by something else. A
 -- ui.DesignSurface is what makes that safe: it takes the whole design out of
@@ -25,6 +31,9 @@ local Outline = require "gui.views.designer.outline"
 local Properties = require "gui.views.designer.properties"
 local Preview = require "gui.views.designer.preview"
 local Files = require "gui.views.designer.files"
+local Icons = require "gui.views.designer.icons"
+local Theme = require "app.core.theme"
+local Images = require "app.core.images"
 
 local DesignerView = {}
 
@@ -83,38 +92,63 @@ end
 -- REFRESH -------------------------------------------------------------------
 
 local function updateTitle()
-    S.tabTitle(S.name .. (S.dirty and " *" or ""))
+    S.window:setTitle(S.name .. ".design" .. (S.dirty and " *" or "") .. "  —  Limer Designer")
+    local w = S.design.window
+    S.info:setText(("%s  ·  %d × %d  ·  %s"):format(
+        S.name, w.width, w.height, S.dirty and "unsaved changes" or "saved"))
+end
+
+-- Menu entries that only make sense for some selections follow it.
+local function updateActions()
+    local node = S.selected
+    local isRoot = node ~= nil and node == S.design.root
+    local isWidget = node ~= nil and not node.kind and not isRoot
+    local A = S.actions
+    A.undo:setEnabled(S.undo:canUndo())
+    A.redo:setEnabled(S.undo:canRedo())
+    S.undoButton:setEnabled(S.undo:canUndo())
+    S.redoButton:setEnabled(S.undo:canRedo())
+    for _, key in ipairs({ "cut", "copy", "duplicate", "wrapRow", "wrapColumn" }) do
+        A[key]:setEnabled(isWidget)
+    end
+    A.delete:setEnabled(node ~= nil and not isRoot)
+    S.deleteButton:setEnabled(node ~= nil and not isRoot)
+    S.wrapRowButton:setEnabled(isWidget)
+    S.wrapColumnButton:setEnabled(isWidget)
+    A.unwrap:setEnabled(DesignModel.isContainer(node) and not isRoot and #node.children == 1)
+    A.moveUp:setEnabled(node ~= nil and not isRoot)
+    A.moveDown:setEnabled(node ~= nil and not isRoot)
+    A.addPage:setEnabled(node ~= nil and node.layout == "tab")
+    for _, item in ipairs(A.layouts) do item:setEnabled(DesignModel.hasLayout(node)) end
+end
+
+local function describe(node)
+    if node == nil then return "nothing selected" end
+    if node.kind then return node.kind end
+    local text = node.name .. "  ·  " .. short(node.class)
+    if DesignModel.isContainer(node) then text = text .. " in a " .. short(node.layout) end
+    return text
 end
 
 local function refreshAll()
     S.canvas:rebuild(S.design)
     S.canvas:select(S.selected)
+    S.surface:setFrameTitle(S.design.window.title)
     S.outline:refresh(S.design)
-    S.props:show(S.selected, S.canvas:widgetFor(S.selected))
+    S.outline:select(S.selected)
+    S.props:show(S.selected, S.canvas:widgetFor(S.selected), S.design)
     S.preview:refresh(S.design, S.name)
-
-    S.filling = true
-    S.titleField:setText(S.design.window.title)
-    S.widthField:setText(tostring(S.design.window.width))
-    S.heightField:setText(tostring(S.design.window.height))
-    S.filling = false
-
-    S.undoButton:setEnabled(S.undo:canUndo())
-    S.redoButton:setEnabled(S.undo:canRedo())
+    updateActions()
     updateTitle()
 end
 
 local function select(node)
     S.selected = node
     S.canvas:select(node)
-    S.props:show(node, S.canvas:widgetFor(node))
-    if node == nil then
-        setStatus("nothing selected")
-    elseif node.kind then
-        setStatus(node.kind)
-    else
-        setStatus(node.name .. "   " .. node.class)
-    end
+    S.outline:select(node)
+    S.props:show(node, S.canvas:widgetFor(node), S.design)
+    updateActions()
+    setStatus(describe(node))
 end
 
 --- Applies fn(draft, selectedInDraft) to a snapshot. fn returns
@@ -156,7 +190,7 @@ local function onDrop(drop)
     local targetPath = pathOf(S.design, drop.target)
     if drop.kind == "class" then
         mutate(function(d)
-            local node = DesignModel.node(drop.class)
+            local node = DesignModel.fromPalette(d, drop.class)
             local ok, why = DesignModel.insert(d, nodeAt(d, targetPath), node, drop.slot)
             if not ok then return false, why end
             return true, nil, pathOf(d, node)
@@ -177,7 +211,7 @@ end
 -- the root.
 local function addClass(class)
     mutate(function(d, selected)
-        local node = DesignModel.node(class)
+        local node = DesignModel.fromPalette(d, class)
         local parent, slot
         if DesignModel.isContainer(selected) then
             parent, slot = selected, {}
@@ -281,26 +315,37 @@ local function changeLayout(layout)
     end, "layout: " .. short(layout))
 end
 
-local function applyWindowFields()
-    if S.filling then return end
-    local title = S.titleField:getText()
-    local width = math.tointeger(tonumber(S.widthField:getText()))
-    local height = math.tointeger(tonumber(S.heightField:getText()))
-    local w = S.design.window
-    if title == w.title and width == w.width and height == w.height then return end
-    if not width or not height or width < 1 or height < 1 then
-        setStatus("width and height must be whole numbers")
-        return
-    end
-    mutate(function(d)
-        d.window.title, d.window.width, d.window.height = title, width, height
-        return true
-    end, "window: " .. title .. " " .. width .. "x" .. height)
-end
-
 -- Property panel callbacks. Each edits a snapshot by path, like every
 -- other change.
 local callbacks = {}
+
+--- An image for a widget's slot, or for the window's icon (slot "window
+--- icon"), by name; nil clears it. From Properties or a drop on the canvas.
+function callbacks.onImage(node, slot, key)
+    if slot == "window icon" then return callbacks.onWindow("icon", key) end
+    local path = pathOf(S.design, node)
+    mutate(function(d)
+        local n = nodeAt(d, path)
+        if not n then return false, "gone" end
+        n.images = n.images or {}
+        n.images[slot] = key
+        if next(n.images) == nil then n.images = nil end
+        return true
+    end, key and (node.name .. "." .. slot .. " = images." .. key) or (node.name .. "." .. slot .. " cleared"))
+end
+
+--- The window's title, width, height or icon, from the root's Window section.
+function callbacks.onWindow(field, value)
+    if (field == "width" or field == "height") and value < 1 then
+        setStatus(field .. " must be at least 1")
+        refreshAll()
+        return
+    end
+    mutate(function(d)
+        d.window[field] = value
+        return true
+    end, "window " .. field .. " = " .. tostring(value))
+end
 
 function callbacks.onProp(node, name, value)
     local path = pathOf(S.design, node)
@@ -384,7 +429,7 @@ function callbacks.onDoubleClick(widget)
     for _, name in ipairs(TEXT_PROPS) do
         local p = byName[name]
         if p and p.settable and (p.type == "str" or p.type == "nil") then
-            local text = ui.Dialogs.textInput(App.window, node.name, name .. ":", tostring(p.value or ""))
+            local text = ui.Dialogs.textInput(S.window, node.name, name .. ":", tostring(p.value or ""))
             if text ~= nil then callbacks.onProp(node, name, text) end
             return
         end
@@ -477,15 +522,27 @@ local function loadDesign(design, name)
     refreshAll()
 end
 
+-- A name no saved design has, so saving a new design never quietly
+-- overwrites one: main, then window2, window3...
+local function freshName()
+    local taken = {}
+    for _, name in ipairs(project() and Files.list(project()) or {}) do taken[name] = true end
+    if not taken.main then return "main" end
+    local n = 2
+    while taken["window" .. n] do n = n + 1 end
+    return "window" .. n
+end
+
 local function newDesign()
-    loadDesign(DesignModel.blank(), "main")
-    setStatus("new design")
+    local name = freshName()
+    loadDesign(DesignModel.blank(), name)
+    setStatus("new, empty design '" .. name .. "' -- drag a layout or widget in; Ctrl+S saves it")
 end
 
 --- True if it is fine to throw the current design away.
 local function confirmDiscard()
     if not S.dirty then return true end
-    return ui.Dialogs.question(App.window, "Unsaved design",
+    return ui.Dialogs.question(S.window, "Unsaved design",
         "The design '" .. S.name .. "' has unsaved changes. Discard them?") == true
 end
 
@@ -494,7 +551,11 @@ local function refreshPicker()
     S.picker:clear()
     local names = Files.list(project())
     S.pickerNames = names
-    S.picker:addItem("(designs)")
+    -- The first entry names a design that is not on disk yet, so the
+    -- picker always says what is being edited.
+    local saved = false
+    for _, name in ipairs(names) do saved = saved or name == S.name end
+    S.picker:addItem(saved and "(designs)" or (S.name .. "  (not saved)"))
     for _, name in ipairs(names) do S.picker:addItem(name) end
     S.picker:setCurrentIndex(1)
     for i, name in ipairs(names) do
@@ -519,7 +580,6 @@ end
 
 local function saveAs(name)
     if not project() then warn("open a project first -- there is nowhere to save"); return false end
-    applyWindowFields()
     local ok, why = Files.save(project(), name, S.design)
     if not ok then warn("could not save: " .. tostring(why)); return false end
     S.name = name
@@ -532,7 +592,7 @@ local function saveAs(name)
 end
 
 local function askName()
-    local name = ui.Dialogs.textInput(App.window, "Save design as",
+    local name = ui.Dialogs.textInput(S.window, "Save design as",
         "Name (becomes scripts/designed/<name>.lua):", S.name)
     if name == nil or name == "" then return nil end
     if not Files.validName(name) then
@@ -561,7 +621,6 @@ end
 
 local function generate()
     if not project() then warn("open a project first -- there is nowhere to write"); return end
-    applyWindowFields()
     local source = DesignModel.generate(S.design, S.name)
     local path, why = Files.writeGenerated(project(), S.name, source)
     if not path then warn("could not write: " .. tostring(why)); return end
@@ -571,7 +630,7 @@ local function generate()
     -- Nothing overwrites main.lua. A generated file that quietly replaced
     -- the file someone had been writing would be unforgivable, and this is
     -- one way only -- the designer cannot read it back.
-    ui.Dialogs.info(App.window, "Generated",
+    ui.Dialogs.info(S.window, "Generated",
         "Written to scripts/designed/" .. S.name .. ".lua.\n\n" ..
         "In main.lua:\n\n" ..
         "    local " .. S.name .. " = require(\"designed." .. S.name .. "\")\n" ..
@@ -589,7 +648,6 @@ local function runPreview()
         warn("a project is already running -- stop it first")
         return
     end
-    applyWindowFields()
     local source = DesignModel.generate(S.design, S.name)
     local path, why = Files.writePreview(project(), S.name, source)
     if not path then warn("could not write the preview: " .. tostring(why)); return end
@@ -599,10 +657,17 @@ end
 
 local function onProjectOpened()
     if S.dirty and not confirmDiscard() then return end
+    S.imageBrowser:setRoot(Images.folder(project()))
     local names = Files.list(project())
     if #names > 0 then
-        local design = Files.load(project(), names[1])
-        if design then loadDesign(design, names[1]) else newDesign() end
+        local design, why = Files.load(project(), names[1])
+        if design then
+            loadDesign(design, names[1])
+            setStatus("opened design/" .. names[1] .. ".design.lua")
+        else
+            newDesign()
+            warn("could not open " .. names[1] .. ": " .. tostring(why))
+        end
     else
         newDesign()
     end
@@ -651,104 +716,211 @@ local function buildContextMenu()
     return menu
 end
 
--- BUILDING THE VIEW ---------------------------------------------------------
+-- BUILDING THE WINDOW -------------------------------------------------------
 
-local function button(row, text, tip, handler)
-    local widget = ui.Button(text)
-    widget:setToolTip(tip)
-    widget:setResizeRule("fixed", "fixed")
-    widget:setOnClick(handler)
-    row:addChild(widget)
-    return widget
+local function newDesignPrompt()
+    if confirmDiscard() then newDesign(); refreshPicker() end
 end
 
-local function separator(row)
-    local line = ui.VLine()
-    row:addChild(line)
+-- Run and Stop are one button, as on Limer's own toolbar: whatever is
+-- running -- this design's preview or the project itself -- can be stopped
+-- from here.
+local function toggleRun()
+    local ProjectRunner = require "app.core.project_runner"
+    if AppState.projectIsRunning then
+        ProjectRunner.stop()
+    else
+        runPreview()
+    end
+end
+
+local function paintRun(isRunning)
+    S.runButton:setText(isRunning and "Stop" or "Run")
+    S.runButton:setIcon(Icons.tool(isRunning and "stop" or "run"))
+    S.runButton:setToolTip(isRunning and "Stop the running window  (Ctrl+R)"
+                                      or "Open the design as a real window  (Ctrl+R)")
+    S.actions.run:setText(isRunning and "Stop running" or "Run design")
+    S.actions.run:setIcon(Icons.tool(isRunning and "stop" or "run"))
+    S.running:setVisible(isRunning)
+    S.busy:setVisible(isRunning)
+    setStatus(isRunning and "running -- Stop (Ctrl+R) ends it" or "stopped")
+end
+
+local function paintTheme()
+    local label = Theme.offer()
+    S.themeButton:setIcon(Icons.tool(label:lower()))
+    S.themeButton:setToolTip("Switch to the " .. label:lower() .. " theme")
+end
+
+local function undo() restore(S.undo:undo(), "undo") end
+local function redo() restore(S.undo:redo(), "redo") end
+
+local function toggleCode()
+    S.codeVisible = not S.codeVisible
+    S.code:setVisible(S.codeVisible)
+    S.codeButton:setChecked(S.codeVisible)
+    S.actions.code:setChecked(S.codeVisible)
+end
+
+-- The menubar is where every command lives, with its shortcut beside it.
+-- Entries given a `key` are kept in S.actions, so updateActions can enable
+-- them as the selection changes.
+--
+-- Shortcuts on menu entries belong to the whole window. That is safe for
+-- Ctrl+C, Ctrl+Z and the rest -- a text field that has focus claims the
+-- standard editing keys before a shortcut sees them -- but not for Delete,
+-- which a table does not claim: with the Properties table focused, Delete
+-- would remove a widget from the design. Delete is bound to the canvas and
+-- the outline instead (installShortcuts), and only shown here.
+local function buildMenubar()
+    S.actions = { layouts = {} }
+    local menubar = ui.Menubar()
+
+    local function menu(title, entries)
+        local m = ui.Menu(title)
+        for _, e in ipairs(entries) do
+            if e == "-" then
+                m:addSeparator()
+            elseif e.submenu then
+                m:addMenu(e.submenu)
+            else
+                local entry = ui.MenuItem(e[1])
+                if e.icon then entry:setIcon(Icons.tool(e.icon)) end
+                if e.shortcut then entry:setShortcut(e.shortcut) end
+                if e.checkable then entry:setCheckable(true) end
+                entry:setOnClick(e[2])
+                m:addMenuItem(entry)
+                if e.key then S.actions[e.key] = entry end
+            end
+        end
+        menubar:addMenu(m)
+    end
+
+    local layouts = ui.Menu("Change layout")
+    for _, class in ipairs(DesignModel.LAYOUTS) do
+        local entry = ui.MenuItem(short(class))
+        entry:setOnClick(function() changeLayout(class) end)
+        layouts:addMenuItem(entry)
+        S.actions.layouts[#S.actions.layouts + 1] = entry
+    end
+
+    menu("File", {
+        { "New design", newDesignPrompt, shortcut = "Ctrl+N", icon = "new" },
+        { "Save", save, shortcut = "Ctrl+S", icon = "save" },
+        { "Save as...", saveAsPrompt, shortcut = "Ctrl+Shift+S" },
+        "-",
+        { "Generate Lua", generate, shortcut = "Ctrl+G", icon = "generate" },
+        { "Run design", toggleRun, shortcut = "Ctrl+R", icon = "run", key = "run" },
+        "-",
+        { "Close designer", function() S.window:close() end, shortcut = "Ctrl+W" },
+    })
+    menu("Edit", {
+        { "Undo", undo, shortcut = "Ctrl+Z", icon = "undo", key = "undo" },
+        { "Redo", redo, shortcut = "Ctrl+Y", icon = "redo", key = "redo" },
+        "-",
+        { "Cut", cutSelected, shortcut = "Ctrl+X", key = "cut" },
+        { "Copy", copySelected, shortcut = "Ctrl+C", key = "copy" },
+        { "Paste", pasteClipboard, shortcut = "Ctrl+V" },
+        { "Duplicate", duplicateSelected, shortcut = "Ctrl+D", key = "duplicate" },
+        "-",
+        { "Delete\tDel", deleteSelected, icon = "delete", key = "delete" },
+    })
+    menu("Arrange", {
+        { "Wrap in a row", function() wrapSelected("ui.HLayout") end, icon = "row", key = "wrapRow" },
+        { "Wrap in a column", function() wrapSelected("ui.VLayout") end, icon = "column", key = "wrapColumn" },
+        { "Unwrap", unwrapSelected, key = "unwrap" },
+        { submenu = layouts },
+        "-",
+        { "Add stretch", function() addPseudo(DesignModel.stretch, "stretch") end },
+        { "Add spacing", function() addPseudo(function() return DesignModel.spacing(12) end, "spacing") end },
+        { "Add page", addPage, key = "addPage" },
+        "-",
+        { "Move up", function() moveSelected(-1) end, shortcut = "Ctrl+Up", key = "moveUp" },
+        { "Move down", function() moveSelected(1) end, shortcut = "Ctrl+Down", key = "moveDown" },
+    })
+    menu("View", {
+        { "Generated code", toggleCode, shortcut = "Ctrl+Shift+C", icon = "code", checkable = true, key = "code" },
+    })
+    return menubar
 end
 
 local function buildToolbar()
-    local row = ui.HLayout()
-    button(row, "New", "Start a new design (Ctrl+N)", function()
-        if confirmDiscard() then newDesign(); refreshPicker() end
-    end)
-    button(row, "Save", "Save the design (Ctrl+S)", save)
-    button(row, "Save as", "Save under another name (Ctrl+Shift+S)", saveAsPrompt)
-    separator(row)
-    S.undoButton = button(row, "Undo", "Ctrl+Z", function() restore(S.undo:undo(), "undo") end)
-    S.redoButton = button(row, "Redo", "Ctrl+Y", function() restore(S.undo:redo(), "redo") end)
-    separator(row)
-    button(row, "Wrap: row", "Put the selection inside a new row", function() wrapSelected("ui.HLayout") end)
-    button(row, "Wrap: column", "Put the selection inside a new column", function() wrapSelected("ui.VLayout") end)
-    button(row, "Delete", "Remove the selection (Delete)", deleteSelected)
-    S.moreButton = button(row, "More...", "Wrap, unwrap, change layout, stretch, spacing", function()
-        local menu = buildContextMenu()
-        menu:popupAt(S.moreButton, 0, 24)
-    end)
-    separator(row)
-    button(row, "Generate", "Write the design out as scripts/designed/<name>.lua (Ctrl+G)", generate)
-    button(row, "Run", "Show the design as a real window (Ctrl+R)", runPreview)
-    row:addStretch()
-    return row
-end
+    local toolbar = ui.Toolbar()
+    toolbar:setMovable(false)
+    toolbar:setToolButtonStyle("textbesideicon")
 
-local function buildDesignRow()
-    local row = ui.HLayout()
-    row:addChild(ui.Label("Design"))
+    -- An empty label leaves the icon alone; the tooltip names it.
+    local function tool(text, icon, tip, handler)
+        local b = ui.ToolbarButton(text)
+        b:setIcon(Icons.tool(icon))
+        b:setToolTip(tip)
+        b:setOnClick(handler)
+        toolbar:addButton(b)
+        return b
+    end
+
+    tool("", "new", "New design  (Ctrl+N)", newDesignPrompt)
+    tool("", "save", "Save  (Ctrl+S)", save)
+    toolbar:addSeparator()
+    S.undoButton = tool("", "undo", "Undo  (Ctrl+Z)", undo)
+    S.redoButton = tool("", "redo", "Redo  (Ctrl+Y)", redo)
+    toolbar:addSeparator()
+    S.wrapRowButton = tool("Row", "row", "Wrap the selection in a new row",
+        function() wrapSelected("ui.HLayout") end)
+    S.wrapColumnButton = tool("Column", "column", "Wrap the selection in a new column",
+        function() wrapSelected("ui.VLayout") end)
+    S.deleteButton = tool("", "delete", "Delete the selection  (Del)", deleteSelected)
+
+    -- Everything after this sits at the right-hand end.
+    local spacer = ui.Container()
+    spacer:setResizeRule("expanding", "preferred")
+    toolbar:addChild(spacer)
+
     S.picker = ui.ComboBox()
-    S.picker:setMinWidth(160)
+    S.picker:setMinWidth(170)
+    S.picker:setToolTip("The project's designs, in its design folder")
     S.picker:setOnItemSelect(function(_, index)
         if S.filling then return end
         local name = S.pickerNames[index - 1]
         if name and name ~= S.name then openDesign(name) end
     end)
-    row:addChild(S.picker)
-    row:addSpacing(16)
-
-    row:addChild(ui.Label("Window title"))
-    S.titleField = ui.LineEdit("My App")
-    S.titleField:setMaxWidth(200)
-    S.titleField:setOnReturnPress(applyWindowFields)
-    row:addChild(S.titleField)
-    row:addChild(ui.Label("Size"))
-    S.widthField = ui.LineEdit("640")
-    S.widthField:setMaxWidth(60)
-    S.widthField:setOnReturnPress(applyWindowFields)
-    row:addChild(S.widthField)
-    row:addChild(ui.Label("x"))
-    S.heightField = ui.LineEdit("480")
-    S.heightField:setMaxWidth(60)
-    S.heightField:setOnReturnPress(applyWindowFields)
-    row:addChild(S.heightField)
-    row:addStretch()
-    return row
+    toolbar:addChild(S.picker)
+    toolbar:addSeparator()
+    S.codeButton = tool("Code", "code", "Show the Lua this design generates  (Ctrl+Shift+C)", toggleCode)
+    S.codeButton:setCheckable(true)
+    tool("Generate", "generate", "Write scripts/designed/<name>.lua  (Ctrl+G)", generate)
+    S.runButton = tool("Run", "run", "Open the design as a real window  (Ctrl+R)", toggleRun)
+    toolbar:addSeparator()
+    S.themeButton = tool("", "dark", "Switch to the dark theme", function() Theme.toggle() end)
+    return toolbar
 end
 
--- Shortcuts are scoped to the designer's own widget tree, or Delete in
--- the designer would eat Delete in every text field in the window.
+-- Bare layouts on the palette. Each becomes a Container laid out that way
+-- (DesignModel.fromPalette), named row1, column1 and so on.
+local LAYOUT_ENTRIES = {
+    { id = "layout:ui.VLayout", text = "Column", tip = "Widgets stacked top to bottom (VLayout)" },
+    { id = "layout:ui.HLayout", text = "Row", tip = "Widgets side by side (HLayout)" },
+    { id = "layout:ui.GridLayout", text = "Grid", tip = "Widgets in rows and columns (GridLayout)" },
+    { id = "layout:ui.FormLayout", text = "Form", tip = "A label beside each field (FormLayout)" },
+}
+
+local function paletteIcons()
+    local map = Icons.mapFor(S.palette:getClasses())
+    for _, entry in ipairs(LAYOUT_ENTRIES) do map[entry.id] = Icons.forClass(entry.id) end
+    return map
+end
+
 local function installShortcuts()
-    local function bind(sequence, handler)
-        local shortcut = ui.KeyboardShortcut(S.view, sequence)
-        shortcut:setScope("widget")
+    local function bind(parent, sequence, scope, handler)
+        local shortcut = ui.KeyboardShortcut(parent, sequence)
+        shortcut:setScope(scope)
         shortcut:setOnPress(handler)
         return shortcut
     end
     S.shortcuts = {
-        bind("Delete", deleteSelected),
-        bind("Ctrl+Z", function() restore(S.undo:undo(), "undo") end),
-        bind("Ctrl+Y", function() restore(S.undo:redo(), "redo") end),
-        bind("Ctrl+Shift+Z", function() restore(S.undo:redo(), "redo") end),
-        bind("Ctrl+S", save),
-        bind("Ctrl+Shift+S", saveAsPrompt),
-        bind("Ctrl+G", generate),
-        bind("Ctrl+N", function() if confirmDiscard() then newDesign(); refreshPicker() end end),
-        bind("Ctrl+Up", function() moveSelected(-1) end),
-        bind("Ctrl+Down", function() moveSelected(1) end),
-        bind("Ctrl+C", copySelected),
-        bind("Ctrl+X", cutSelected),
-        bind("Ctrl+V", pasteClipboard),
-        bind("Ctrl+D", duplicateSelected),
-        bind("Ctrl+R", runPreview),
+        bind(S.scroller, "Delete", "widget", deleteSelected),
+        bind(S.tree, "Delete", "widget", deleteSelected),
+        bind(S.window, "Ctrl+Shift+Z", "window", redo),
     }
 end
 
@@ -759,15 +931,28 @@ function DesignerView.create()
         name = "main",
         filling = false,
         pickerNames = {},
-        tabTitle = function() end,
+        codeVisible = false,
         status = ui.Label(""),
+        info = ui.Label(""),
     }
 
+    S.window = ui.Window {
+        title = "Limer Designer",
+        icon = Icons.tool("designer"),
+    }
+    S.window:setSize(1360, 840)
+
+    -- Left: the palette.
     S.palette = ui.WidgetPalette()
-    S.palette:setMinWidth(150)
-    S.palette:setMaxWidth(260)
+    S.palette:setMinWidth(160)
+    S.palette:setMaxWidth(280)
+    -- Layouts first: in Limekit a layout is what holds widgets, so it is
+    -- usually the first thing a window needs.
+    S.palette:addGroup("Layouts", LAYOUT_ENTRIES, true)
+    S.palette:setIcons(paletteIcons())
     S.palette:setOnPick(addClass)
 
+    -- Middle: the canvas, and the generated code under it when asked for.
     S.surface = ui.DesignSurface()
     S.surface:setOnContextMenu(function(widget, x, y)
         -- The surface has already selected `widget`; the view's selection
@@ -777,51 +962,133 @@ function DesignerView.create()
     end)
     S.surface:setOnResize(callbacks.onResize)
     S.surface:setOnDoubleClick(function(widget) callbacks.onDoubleClick(widget) end)
-    local scroller = ui.Scroller()
-    scroller:setChild(S.surface)
-    scroller:setResizable(true)
-    S.canvas = Canvas.new(S.surface, onDrop, select)
+    S.scroller = ui.Scroller()
+    S.scroller:setChild(S.surface)
+    S.scroller:setResizable(true)
+    S.scroller:setMinWidth(240)
+    S.canvas = Canvas.new(S.surface, onDrop, select,
+        function(node, slot, key) callbacks.onImage(node, slot, key) end)
 
-    local tree = ui.TreeView()
-    S.outline = Outline.new(tree, select)
+    -- The project's images, beside the palette. Dropping files in, making
+    -- folders and moving images between them rewrites images.lua (through
+    -- Images.refresh) and the canvas follows; drag an image onto a widget
+    -- to give it that image.
+    S.imageBrowser = ui.ImageBrowser()
+    S.imageBrowser:setOrientation("vertical")
+    S.imageBrowser:setOnChange(function()
+        if project() then Images.refresh(project()) end
+    end)
+    S.imageBrowser:setOnSelect(function(relPath)
+        local key = relPath and Images.keyFor(relPath)
+        S.imageBrowser:setInfo(key
+            and ("In code: " .. Images.reference(key) .. "\nDrag it onto a widget, or pick it in Properties.")
+            or "Drop image files here, or onto a folder.")
+    end)
+
+    local left = ui.Tab()
+    left:addTab(S.palette, "Widgets")
+    left:addTab(S.imageBrowser, "Images")
+    left:setMinWidth(170)
+
+    S.code = ui.TextField()
+    S.preview = Preview.new(S.code)
+    S.code:setVisible(false)
+
+    local middle = ui.Splitter("vertical")
+    middle:addChild(S.scroller)
+    middle:addChild(S.code)
+    middle:setStretchFactors({ 1, 0 })
+    middle:setSizes({ 560, 220 })
+
+    -- Right: the outline above the properties, both always in view.
+    S.tree = ui.TreeView()
+    S.outline = Outline.new(S.tree, select)
     local table_ = ui.Table()
     S.props = Properties.new(table_, callbacks)
-    local code = ui.TextField()
-    S.preview = Preview.new(code)
 
-    local side = ui.Tab()
-    side:addTab(tree, "Outline")
-    side:addTab(table_, "Properties")
-    side:addTab(code, "Code")
-    side:setMinWidth(260)
-    scroller:setMinWidth(200)
+    local side = ui.Splitter("vertical")
+    side:addChild(S.tree)
+    side:addChild(table_)
+    side:setSizes({ 260, 480 })
+    side:setMinWidth(280)
 
     -- The canvas takes every pixel the palette and the side pane do not
     -- need. setSizes is in pixels and only a starting point; the stretch
     -- factors are what keep the canvas the one that grows.
     local split = ui.Splitter("horizontal")
-    split:addChild(S.palette)
-    split:addChild(scroller)
+    split:addChild(left)
+    split:addChild(middle)
     split:addChild(side)
     split:setStretchFactors({ 0, 1, 0 })
-    split:setSizes({ 200, 900, 360 })
+    split:setSizes({ 210, 790, 360 })
 
-    local layout = ui.VLayout()
-    layout:addLayout(buildToolbar())
-    layout:addLayout(buildDesignRow())
-    layout:addChild(split, 1)
-    layout:addChild(S.status)
-    S.view = ui.Container()
-    S.view:setLayout(layout)
+    -- While a window is running: a green label and a busy bar, so it is
+    -- plain that something is up and that Stop will end it.
+    S.running = ui.Label("●  Running")
+    S.running:setTextColor("#16A34A")
+    S.running:setVisible(false)
+    S.busy = ui.ProgressBar()
+    S.busy:setRange(0, 0)
+    S.busy:setMaxWidth(90)
+    S.busy:setMaxHeight(10)
+    S.busy:setVisible(false)
+
+    local bar = ui.StatusBar()
+    bar:addChild(S.status, 1)
+    bar:addPermanentChild(S.running, 0)
+    bar:addPermanentChild(S.busy, 0)
+    bar:addPermanentChild(S.info, 0)
+
+    S.window:setMenubar(buildMenubar())
+    S.window:addToolbar(buildToolbar())
+    S.window:setStatusbar(bar)
+    S.window:setMainChild(split)
 
     installShortcuts()
     newDesign()
 
+    -- The widget icons are drawn for one background; a theme switch has to
+    -- swap them, which a palette change alone does not do.
+    Theme.observe(function()
+        S.palette:setIcons(paletteIcons())
+        S.outline:refresh(S.design)
+        S.outline:select(S.selected)
+        paintTheme()
+    end)
+    paintTheme()
+
+    -- Images added, moved or renamed -- here, in Limer's Images tab, or
+    -- outside Limer -- show on the canvas and in Properties at once.
+    Images.observe(function()
+        if S.design then refreshAll() end
+    end)
+
+    -- The runner is shared with Limer's own Run button, so the designer's
+    -- button follows it whoever started or stopped the run.
+    local ProjectRunner = require "app.core.project_runner"
+    ProjectRunner.observe(paintRun)
+    paintRun(AppState.projectIsRunning == true)
+    setStatus("")
+
+    local function show()
+        S.window:show()
+        S.window:setFocus()
+    end
+
     return {
-        view = S.view,
+        window = S.window,
+        show = show,
+        hide = function() S.window:hide() end,
         onProjectOpened = onProjectOpened,
         isDirty = function() return S.dirty end,
-        setTabTitleSetter = function(fn) S.tabTitle = fn; updateTitle() end,
+
+        --- True if Limer may quit: nothing unsaved, or the user said so.
+        confirmQuit = function()
+            if not S.dirty then return true end
+            show()
+            return ui.Dialogs.question(S.window, "Unsaved design",
+                "The design '" .. S.name .. "' has unsaved changes. Quit anyway?") == true
+        end,
 
         -- For scripts and checks.
         getDesign = function() return S.design end,
@@ -831,14 +1098,15 @@ function DesignerView.create()
         deleteSelected = deleteSelected,
         moveSelected = moveSelected,
         wrapSelected = wrapSelected,
-        undo = function() restore(S.undo:undo(), "undo") end,
-        redo = function() restore(S.undo:redo(), "redo") end,
+        undo = undo,
+        redo = redo,
         newDesign = newDesign,
         generate = generate,
         runPreview = runPreview,
         copySelected = copySelected,
         pasteClipboard = pasteClipboard,
         duplicateSelected = duplicateSelected,
+        toggleCode = toggleCode,
         getStatus = function() return S.status:getText() end,
     }
 end

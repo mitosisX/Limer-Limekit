@@ -3,6 +3,7 @@
 
 local ui  = require("limekit.ui")
 local fs  = require("limekit.fs")
+local res = require("limekit.res")
 
 local json = require "json"
 local Paths = require "app.core.config.paths"
@@ -54,15 +55,22 @@ function ProjectManager.loadProject(projectFile)
 
     -- From here the tree follows the folder rather than a snapshot of it.
     local ProjectWatcher = require "app.core.project_watcher"
-    ProjectWatcher.start(fileFolderLocation, ProjectManager.refreshDirectoryTree)
+    local Images = require "app.core.images"
+    -- The images module follows the folder too: an image dropped in from
+    -- Explorer or Finder is in images.lua a moment later.
+    ProjectWatcher.start(fileFolderLocation, function()
+        ProjectManager.refreshDirectoryTree()
+        Images.refresh(fileFolderLocation)
+    end)
+    Images.refresh(fileFolderLocation)
 
     App.toolbar.enableProjectActions()
 
     if App.propertiesTab and App.propertiesTab.refresh then
         App.propertiesTab.refresh()
     end
-    if App.designerTab and App.designerTab.onProjectOpened then
-        App.designerTab.onProjectOpened(fileFolderLocation)
+    if App.designer and App.designer.onProjectOpened then
+        App.designer.onProjectOpened(fileFolderLocation)
     end
 end
 
@@ -134,15 +142,25 @@ function ProjectManager._showDirectory(node, path, isRoot)
     end
 
     for _, folder in ipairs(folders) do
-        local item = ProjectManager.createTreeItem(folder[1], App.window:getStandardIcon('SP_DirIcon'))
+        local item = ProjectManager.createTreeItem(folder[1], ProjectManager.iconFor(folder[2]))
         attach(item)
         ProjectManager._showDirectory(item, folder[2], false)
     end
 
     for _, file in ipairs(files) do
-        local item = ProjectManager.createTreeItem(file[1], App.window:getStandardIcon('SP_FileIcon'))
+        local item = ProjectManager.createTreeItem(file[1], ProjectManager.iconFor(file[2]))
         attach(item)
     end
+end
+
+--- The icon a file shows in the Project tree: the operating system's own
+--- for its type, a thumbnail for an image, and Limer's for a .lua file --
+--- which most systems have no association, and so no icon, for.
+function ProjectManager.iconFor(path)
+    if path:lower():match("%.lua$") then
+        return res.Resources.images("files/lua.svg")
+    end
+    return fs.FileSystem.getFileIcon(path)
 end
 
 function ProjectManager.createTreeItem(name, icon)
@@ -160,7 +178,11 @@ function ProjectManager.listAvailableProjects()
 
     local dockList = App.dockables.userProjectsListDock.userProjectsList
     dockList:clear()
-    dockList:addItems(projects)
+    -- Each with the OS's own folder icon, so the list reads as folders.
+    for _, name in ipairs(projects) do
+        local folder = fs.FileSystem.joinPaths(ProjectManager.PROJECTS_FOLDER, name)
+        dockList:addImageItem(name, fs.FileSystem.getFileIcon(folder))
+    end
 
     return projects
 end

@@ -47,6 +47,12 @@ function Shortcuts.attach(window)
         api = bind("Ctrl+K", function()
             ApiPalette.show(window)
         end),
+
+        designer = bind("Ctrl+Shift+D", function()
+            if AppState.activeProjectPath == nil then return end
+            local App = require "app.core.app"
+            App.designer.show()
+        end),
     }
 end
 

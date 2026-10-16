@@ -103,7 +103,7 @@ function ProjectFilesDock.create()
     end)
 
     local dock = ui.Dockable("Project")
-    dock:setMinWidth(260)
+    dock:setMinWidth(170)
     dock:setChild(tree)
 
     return {

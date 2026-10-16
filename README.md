@@ -40,9 +40,11 @@ strings included.
 
 - **Left — Project.** The open project's files. Double-click one and it
   opens in whatever your desktop has registered for it.
-- **Centre — the home page, and your project's Application, Properties and
-  Designer tabs.** One toolbar button switches between the home page and
-  your project, and it is named after wherever you are not.
+- **Centre — the home page, and your project's Application and Properties
+  tabs.** One toolbar button switches between the home page and your
+  project, and it is named after wherever you are not.
+- **Designer** (toolbar, or Ctrl+Shift+D) opens the visual designer in a
+  window of its own once a project is open.
 - **Right — Your Projects.** Everything under your Limekit projects folder.
   Double-click to open.
 - **Bottom — Console and Inspector.** While a project is running, the
@@ -53,30 +55,43 @@ strings included.
 
 ### The Designer
 
+The designer is a window of its own, opened with the **Designer** toolbar
+button or Ctrl+Shift+D. A canvas wants the whole screen, and in its own
+window the designer's shortcuts (Ctrl+X cut, Ctrl+R run the design) no
+longer collide with Limer's (Ctrl+X stop, Ctrl+R run the project). Closing
+it only hides it -- unsaved work is still there when it is reopened -- and
+quitting Limer asks first if a design has unsaved changes.
+
 Drag widgets from the palette on the left onto the canvas. The canvas holds
 real Limekit widgets running inside Limer -- not pictures of them and not a
 preview -- made inert by `ui.DesignSurface`, so a click selects a button
-instead of pressing it.
+instead of pressing it. The design is drawn inside the window it will
+become, title bar included; click the title bar to select the window and
+edit its title and size in Properties.
 
 **Layouts, not coordinates.** A widget lands *in a row, column, grid or
 form*, at the slot the orange indicator shows, rather than at an x and a y.
 That is what makes a designed window survive being resized. A Tab, Splitter
 or Scroller is a drop target too: a widget dropped on a Tab gets a page made
 around it. Drag a placed widget to move it; drag a selection handle to set
-its minimum size; double-click to edit its text. Right-click (or the
-More... button) for wrap, unwrap, change layout, add page, stretch,
-spacing, and cut, copy, paste and duplicate -- a copied widget travels as
-Lua on the clipboard and pastes into any design. The Outline tab shows the
-tree, the Properties tab edits the selection -- its name, where it sits,
-and every property its widget declares -- and the Code tab shows the Lua
-that would be generated, kept current. Ctrl+Z undoes; Delete deletes.
+its minimum size; double-click to edit its text. Every command is in the
+menubar with its shortcut -- File, Edit, Arrange (wrap, unwrap, change
+layout, add page, stretch, spacing, move up and down) -- and right-click
+gives the same commands for the widget under the cursor. A copied widget
+travels as Lua on the clipboard and pastes into any design. On the right,
+the Outline shows the tree and Properties edits the selection -- its name,
+where it sits, and every property its widget declares -- both always in
+view. **Code** (Ctrl+Shift+C) opens the Lua that would be generated under
+the canvas, kept current. Ctrl+Z undoes. Delete deletes when the canvas or
+the outline has focus, and only then, so it never takes a widget out of the
+design while you are in the Properties table.
 
 **Run** (Ctrl+R) shows the design as a real window: a throwaway project is
 written under `design/.preview/` and started through the ordinary project
 runner, so the console and the Inspector work on it.
 
 **Designs are saved** to `design/<name>.design.lua` in the project, one per
-window, and reopened from the picker above the canvas. **Generate** writes
+window, and reopened from the picker in the toolbar. **Generate** writes
 `scripts/designed/<name>.lua`: a module that returns its window and every
 widget by name, so `main.lua` requires it and wires handlers on:
 
@@ -89,6 +104,35 @@ designer never reads the generated module back and never touches
 `main.lua`. Regenerate rather than edit. This is the same bargain Qt
 Designer strikes with `.ui`, and for the same reason: reconciling generated
 code with hand-edited code is what kills these tools.
+
+### Images
+
+The **Images** tab -- in the project workspace, and beside the palette in
+the designer -- manages the project's `images/` folder. Make folders to keep
+icons apart from photos, drop image files in from Explorer, Finder or your
+file manager, drag images between folders, rename them, delete them (to the
+trash). Thumbnails show what each one is.
+
+Every image gets a **name** -- its file name made into a Lua identifier --
+and Limer keeps `scripts/designed/images.lua` mapping names to paths:
+
+    local images = require("designed.images")
+    window:setIcon(images.logo)
+
+Code names *which* image, never *where* it lives. Moving `logo.png` from
+`brand/` to `icons/` rewrites that one generated file; `images.logo` keeps
+working and nothing else changes. The file follows the folder even when
+images are moved outside Limer. Names are unique across the whole tree --
+a file brought in under a name already used gets `_2` on the end.
+
+In the designer, pick a window's icon and a widget's image in Properties,
+or drag an image from the Images panel straight onto a button, label or
+image widget (onto the title bar for the window's icon). Designs store the
+name, so generated code reads `M.ok:setIcon(images.save)`.
+
+The Project tree shows each file with your system's own icon for its type,
+images as thumbnails, and `.lua` files with Limer's. The toolbar's
+Light/Dark button switches the theme, in Limer and the designer alike.
 
 The framework side -- `ui.DesignSurface`, `ui.WidgetPalette` and
 `sys.Introspect` -- lives in Limekit; Limer owns the model, the files and

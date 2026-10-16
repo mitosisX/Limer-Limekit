@@ -27,8 +27,10 @@ function UserProjectsDock.create()
     end)
 
     userProjectsList:setResizeRule('expanding', 'expanding')
+    userProjectsList:setIconSize(16, 16)
 
     local dock = ui.Dockable("Your Projects")
+    dock:setMinWidth(150)
     dock:setChild(userProjectsList)
 
     return {

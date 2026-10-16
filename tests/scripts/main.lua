@@ -410,5 +410,102 @@ check("a fragment pastes with fresh names, anywhere, repeatedly", function()
     eq((DesignModel.paste(d, d.root, "return { kind = 'stretch' }", {})), nil)
 end)
 
+-- PALETTE -------------------------------------------------------------------
+
+check("a Container or GroupBox from the palette can be dropped into", function()
+    eq(DesignModel.node("ui.Container").layout, "ui.VLayout")
+    eq(#DesignModel.node("ui.Container").children, 0)
+    local group = DesignModel.node("ui.GroupBox")
+    eq(group.layout, "ui.VLayout"); eq(group.props.title, "Group")
+    local d = DesignModel.blank()
+    local box = DesignModel.node("ui.Container")
+    assert(DesignModel.insert(d, d.root, box, { index = 1 }))
+    assert(DesignModel.insert(d, box, DesignModel.node("ui.Button"), { index = 1 }))
+    eq(#box.children, 1)
+end)
+
+check("a layout entry from the palette is a container named after it", function()
+    local d = DesignModel.blank()
+    local row = DesignModel.fromPalette(d, "layout:ui.HLayout")
+    eq(row.class, "ui.Container"); eq(row.layout, "ui.HLayout"); eq(row.name, "row1")
+    assert(DesignModel.insert(d, d.root, row, { index = 1 }))
+    eq(DesignModel.fromPalette(d, "layout:ui.HLayout").name, "row2")
+    eq(DesignModel.fromPalette(d, "layout:ui.GridLayout").name, "grid1")
+    eq(DesignModel.fromPalette(d, "ui.Button").class, "ui.Button")
+end)
+
+-- IMAGES --------------------------------------------------------------------
+
+local Images = require("app.core.images")
+local fs = require("limekit.fs")
+local FS = fs.FileSystem
+
+check("image names are Lua identifiers, matching the browser's", function()
+    eq(Images.key("my-logo@2x"), "my_logo_2x")
+    eq(Images.key("2fast"), "_2fast")
+    eq(Images.key("---"), "image")
+    eq(Images.reference("logo"), "images.logo")
+    eq(Images.reference("end"), 'images["end"]')
+end)
+
+check("a scan names every image in every folder, shallowest wins a clash", function()
+    local project = FS.joinPaths(os.getenv("TEMP") or os.getenv("TMPDIR") or "/tmp",
+        "limer-images-check-" .. tostring(os.time()))
+    local root = FS.joinPaths(project, "images")
+    FS.createFolder(project); FS.createFolder(root)
+    FS.createFolder(FS.joinPaths(root, "icons")); FS.createFolder(FS.joinPaths(root, "brand"))
+    for _, rel in ipairs({ "save.png", "icons/save.png", "icons/open.svg", "brand/logo.png",
+                           "notes.txt", "icons/.hidden.png" }) do
+        FS.writeFile(FS.joinPaths(root, (rel:gsub("/", package.config:sub(1, 1)))), "x")
+    end
+    local list = Images.scan(project)
+    local byKey = {}
+    for _, image in ipairs(list) do byKey[image.key] = image.path end
+    eq(byKey.save, "save.png"); eq(byKey.icons_save, "icons/save.png")
+    eq(byKey.open, "icons/open.svg"); eq(byKey.logo, "brand/logo.png")
+    eq(byKey.notes, nil); eq(byKey.hidden, nil)
+    eq(#list, 4)
+
+    -- Writing the module, and only when it changes.
+    Images.refresh(project)
+    local path = Images.modulePath(project)
+    assert(FS.exists(path), "images.lua written")
+    local source = FS.readFile(path)
+    assert(source:find('logo = res.Resources.images("brand/logo.png")', 1, true), source)
+    eq(Images.keyFor("icons/save.png"), "icons_save")
+    eq(Images.path("nope"), nil)
+    assert(Images.path("logo"):find("logo.png", 1, true))
+    -- fs has no recursive delete; the folder is in TEMP and named uniquely.
+end)
+
+check("the images module loads and maps names to resource paths", function()
+    local source = Images.module({ { key = "logo", path = "brand/logo.png" }, { key = "end", path = "end.png" } })
+    local env = { require = function()
+        return { Resources = { images = function(p) return "IMG:" .. p end } }
+    end }
+    local images = assert(load(source, "images", "t", env))()
+    eq(images.logo, "IMG:brand/logo.png"); eq(images["end"], "IMG:end.png")
+end)
+
+check("a design names its images, and generates them by name", function()
+    local d = DesignModel.blank()
+    d.window.icon = "logo"
+    local b = DesignModel.node("ui.Button")
+    b.images = { icon = "save" }
+    assert(DesignModel.insert(d, d.root, b, { index = 1 }))
+    eq(table.concat(DesignModel.imagesUsed(d), ","), "logo,save")
+    eq(DesignModel.imageSlots("ui.Button")[1], "icon")
+    eq(DesignModel.imageSlots("ui.Image")[1], "image")
+    eq(#DesignModel.imageSlots("ui.LineEdit"), 0)
+    local src = DesignModel.generate(d, "main")
+    assert(src:find('local images = require("designed.images")', 1, true), src)
+    assert(src:find("M.button1:setIcon(images.save)", 1, true), src)
+    assert(src:find("M.window:setIcon(images.logo)", 1, true), src)
+    -- and a design with none does not require the module at all
+    assert(not DesignModel.generate(DesignModel.blank(), "x"):find("designed.images", 1, true))
+    local back = assert(DesignModel.deserialize(DesignModel.serialize(d)))
+    eq(back.window.icon, "logo"); eq(back.root.children[1].images.icon, "save")
+end)
+
 print(string.format("\n%d checks, %d failed", count, failures))
 sys.System.exit(failures == 0 and 0 or 1)

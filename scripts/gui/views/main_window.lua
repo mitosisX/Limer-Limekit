@@ -3,6 +3,7 @@
 
 local ui  = require("limekit.ui")
 local res = require("limekit.res")
+local sys = require("limekit.sys")
 
 local App = require "app.core.app"
 local Styles = require "gui.styles.init"
@@ -40,10 +41,12 @@ function MainWindow.create()
     local debugTab = DebugTab.create(console, inspectorView)
     App.setDebugTab(debugTab)
 
-    local designerTab = DesignerView.create()
-    App.setDesignerTab(designerTab)
+    -- A window of its own, built now and hidden until the toolbar's
+    -- Designer button (or Ctrl+Shift+D) shows it.
+    local designer = DesignerView.create()
+    App.setDesigner(designer)
 
-    local projectWorkspace = ProjectWorkspace.create(appTab, propertiesTab, designerTab)
+    local projectWorkspace = ProjectWorkspace.create(appTab, propertiesTab)
     App.setProjectWorkspace(projectWorkspace)
 
     local dockables = Dockables.create()
@@ -55,7 +58,7 @@ function MainWindow.create()
     local menu = MainMenu.create()
 
     local window = ui.Window {
-        title = "Limer - Rézolu",
+        title = "Limer",
         icon = res.Resources.images('app/lemon.png')
     }
     App.setWindow(window)
@@ -76,25 +79,51 @@ function MainWindow.create()
     window:addDockable(dockables.projectFilesDock.dock, 'left')
     window:addDockable(dockables.userProjectsListDock.userProjectsListDock, 'right')
 
-    homeStackedWidget:addLayout(WelcomeView.create())
+    -- The welcome page scrolls in a small window rather than setting the
+    -- window's minimum width; see project_tab_container for the same.
+    local welcome = ui.Container()
+    welcome:setLayout(WelcomeView.create())
+    local welcomeScroller = ui.Scroller()
+    welcomeScroller:setChild(welcome)
+    welcomeScroller:setResizable(true)
+    homeStackedWidget:addChild(welcomeScroller)
     homeStackedWidget:addChild(projectWorkspace.view)
 
     local homescreenSplitter = ui.Splitter('vertical')
     homescreenSplitter:addChild(homeStackedWidget)
     homescreenSplitter:addChild(debugTab.tabWidget)
+    -- When the window is resized, the workspace takes three quarters of the
+    -- change and the console one; without this a short window gave the
+    -- console most of the height.
+    homescreenSplitter:setStretchFactors({ 3, 1 })
 
     window:setMainChild(homescreenSplitter)
+
+    -- Closing Limer closes the designer with it -- after asking, if it
+    -- holds unsaved work. Otherwise a visible designer would keep the
+    -- process alive with Limer's own window gone.
+    window:setOnClose(function(_, event)
+        if not designer.confirmQuit() then
+            event.ignore()
+            return
+        end
+        designer.hide()
+    end)
 
     window:setOnShown(function()
         window:maximize()
 
         -- Roughly three quarters workspace, one quarter console. Without
         -- this the splitter falls back to the two children's size hints and
-        -- gives the console close to half the window, which is far more than
-        -- a few lines of output needs. Set after maximize, because the sizes
-        -- are shared out against the window's actual height and setting them
-        -- against the pre-maximised one is immediately overridden.
-        homescreenSplitter:setSizes({ 74, 26 })
+        -- gave the console two thirds of the window. The sizes are real
+        -- pixels from the maximised height, set a moment later: { 74, 26 }
+        -- set here, before the window manager had finished maximising, was
+        -- overridden and never took effect.
+        sys.Timer.singleShot(250, function()
+            local _, height = window:getSize()
+            local console = math.max(160, math.floor(height * 0.26))
+            homescreenSplitter:setSizes({ height - console, console })
+        end)
 
         ProjectManager.listAvailableProjects()
     end)

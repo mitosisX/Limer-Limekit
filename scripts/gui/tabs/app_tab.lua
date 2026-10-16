@@ -32,8 +32,10 @@ function AppTab.create()
     local function createAppInfoSection()
         self.appInfoGroup = ui.GroupBox()
         ui.DropShadow(self.appInfoGroup)
-        self.appInfoGroup:setMinWidth(500)
-        self.appInfoGroup:setMaxWidth(500)
+        -- Narrows with the window down to a usable minimum, instead of
+        -- holding the whole window at least 500px plus both docks wide.
+        self.appInfoGroup:setMinWidth(320)
+        self.appInfoGroup:setMaxWidth(520)
 
         self.detailsGroup = ui.GroupBox()
         self.detailsLayout = ui.HLayout()

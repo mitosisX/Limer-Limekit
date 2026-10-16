@@ -10,7 +10,9 @@ Preview.__index = Preview
 function Preview.new(field)
     field:setReadOnly(true)
     field:setWrapMode("none")
-    pcall(field.setFont, field, "Consolas")
+    -- TextField has no font setter; a stylesheet carrying only the font
+    -- leaves the theme's colours alone. Each OS finds one of these.
+    field:setStyleSheet("font-family: 'Cascadia Mono', Consolas, Menlo, 'DejaVu Sans Mono', monospace;")
     return setmetatable({ field = field }, Preview)
 end
 

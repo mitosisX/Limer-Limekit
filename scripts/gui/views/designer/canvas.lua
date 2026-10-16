@@ -9,14 +9,25 @@
 local ui  = require("limekit.ui")
 local sys = require("limekit.sys")
 local DesignModel = require "app.core.design_model"
+local Images = require "app.core.images"
 
 local Canvas = {}
 Canvas.__index = Canvas
 
 --- onDrop({ kind = "class", class, target, slot }) or
---- onDrop({ kind = "move", node, target, slot }); onSelect(node or nil).
-function Canvas.new(surface, onDrop, onSelect)
+--- onDrop({ kind = "move", node, target, slot }); onSelect(node or nil);
+--- onImage(node, slot, key) when an image is dragged onto a widget --
+--- slot is "window icon" for the root.
+function Canvas.new(surface, onDrop, onSelect, onImage)
     local self = setmetatable({ surface = surface, widgetOf = {}, nodeOf = {} }, Canvas)
+
+    surface:setOnImageDrop(function(widget, relPath)
+        local node = self.nodeOf[widget]
+        local key = Images.keyFor(relPath)
+        if not node or not key or not onImage then return end
+        local slot = node == self.root and "window icon" or DesignModel.imageSlots(node.class)[1]
+        if slot then onImage(node, slot, key) end
+    end)
 
     surface:setOnSelect(function(widget)
         onSelect(widget and self.nodeOf[widget] or nil)
@@ -86,6 +97,12 @@ function Canvas:build(node)
     for name, value in pairs(node.props or {}) do
         Canvas.apply(widget, name, value)
     end
+    -- Images are named, not pathed; the name is looked up in the project's
+    -- images now, so a moved file still shows.
+    for slot, key in pairs(node.images or {}) do
+        local path = Images.path(key)
+        if path then Canvas.apply(widget, slot, path) end
+    end
     self.widgetOf[node], self.nodeOf[widget] = widget, node
 
     if ok and DesignModel.isContainer(node) and not DesignModel.hasLayout(node) then
@@ -135,12 +152,31 @@ end
 
 function Canvas:rebuild(design)
     self.widgetOf, self.nodeOf = {}, {}
+    self.root = design.root
     local root = self:build(design.root)
     root:setFixedSize(design.window.width, design.window.height)
+    -- Labels go on after setDesignChild, which forgets the old design's.
     self.surface:setDesignChild(root)
+    for widget, node in pairs(self.nodeOf) do self:label(widget, node) end
     -- Every widget built above is new and therefore still interactive; the
     -- surface has to be told before the next click reaches one of them.
     self.surface:refresh()
+end
+
+--- The name on the surface's hover, selection and drag tags: "ok · Button",
+--- or for a laid-out container what it lays out as, "buttons · Row".
+function Canvas:label(widget, node)
+    local kind = className(node.class)
+    if DesignModel.hasLayout(node) then
+        local word = DesignModel.LAYOUT_WORDS[node.layout] or kind
+        kind = word:sub(1, 1):upper() .. word:sub(2)
+    end
+    self.surface:setWidgetLabel(widget, node.name .. " · " .. kind)
+    -- Where an image dragged from the images manager can land: the
+    -- widget's first image slot, or for the root, the window's icon.
+    local slot = DesignModel.imageSlots(node.class)[1]
+    if node == self.root then slot = "window icon" end
+    if slot then self.surface:setImageTarget(widget, slot) end
 end
 
 function Canvas:widgetFor(node) return node and self.widgetOf[node] or nil end
