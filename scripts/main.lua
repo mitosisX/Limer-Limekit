@@ -6,7 +6,6 @@
                             |_____|_|_| |_| |_|\___|_|            |_|\__,_|\__,_| |___|____/|_____|
 
 
-            Copyright: Rézolu
             Chief Developer: Omega Msiska (github.com/mitosisx)
 
         This source code is provided unobfuscated and written in simple Lua syntax

@@ -471,15 +471,6 @@ function aboutPage()
     gBLayo:addChild(aboutChiefTitle)
     gBLayo:addChild(aboutChief)
 
-    title3 = Label('Company')
-    title3:setBold(true)
-    title3:setTextColor('white')
-    subTitle3 = Label('Rézolu\n')
-    subTitle3:setTextColor('white')
-
-    gBLayo:addChild(title3)
-    gBLayo:addChild(subTitle3)
-
     title4 = Label('My github')
     title4:setBold(true)
     title4:setTextColor('white')

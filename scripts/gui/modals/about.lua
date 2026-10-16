@@ -38,7 +38,6 @@ function AboutPage.show()
         { title = 'Name',           value = 'Limekit\n' },
         { title = 'Version',        value = '1.0 (Debbie)\n' },
         { title = 'Chief Developer', value = 'Omega Msiska\n' },
-        { title = 'Company',        value = 'Rézolu\n' },
         { title = 'GitHub',         value = 'mitosisx' }
     }
 
