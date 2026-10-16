@@ -23,10 +23,8 @@ function ProjectWorkspace.create(appTab, propertiesTab)
     local function initTabs()
         self.tabs:addTab(scrolling(appTab.view), "Application")
         self.tabs:addTab(scrolling(propertiesTab.view), "Properties")
-        -- The browser scrolls on its own and wants the full height.
-        local ImagesTab = require "gui.tabs.images_tab"
-        self.imagesTab = ImagesTab.create()
-        self.tabs:addTab(self.imagesTab.view, "Images")
+        -- Images are managed in the designer, where they are used; see
+        -- gui/views/designer/view.lua.
     end
 
     initTabs()

@@ -33,10 +33,70 @@ function ProjectManager.openProject()
     end
 end
 
+-- What a project's app.json starts as: the same shape the New Project
+-- dialog writes. `api` only for a project known to be written for 2.0 --
+-- a repaired one is left without it, so the engine is chosen from the
+-- code, as it always was for that project.
+function ProjectManager.defaultConfig(name, api)
+    return {
+        api = api,
+        project = { name = name, author = "", description = "", copyright = "", version = "1.0", email = "" },
+        files = { aliases = {} },
+    }
+end
+
+--- The project's app.json as a table, or nil and what is wrong with it.
+function ProjectManager.readConfig(projectFile)
+    if not fs.FileSystem.exists(projectFile) then return nil, "missing" end
+    local ok, config = pcall(function() return json.parse(fs.FileSystem.readFile(projectFile)) end)
+    -- The parser's error starts with its own file and line; only what is
+    -- wrong with the JSON means anything to the person reading it.
+    if not ok then return nil, "unreadable: " .. (tostring(config):gsub("^.-:%d+: ", "")) end
+    if type(config) ~= "table" or type(config.project) ~= "table" then
+        return nil, "unreadable: it has no \"project\" section"
+    end
+    return config
+end
+
+-- A project whose app.json is missing or broken is not opened as it is --
+-- everything after this point reads it. Say what is wrong and offer to
+-- write a fresh one; a broken file is kept beside it as app.json.bak.
+local function repairConfig(projectFile, why)
+    local folder = fs.FileSystem.getDirName(projectFile)
+    local name = fs.FileSystem.getFileName(folder)
+    local missing = why == "missing"
+    local message = missing
+        and ("'" .. name .. "' has no app.json, which every Limekit project needs: it holds the "
+            .. "app's name, version and settings.\n\nCreate one now?")
+        or ("The app.json in '" .. name .. "' cannot be read (" .. why:gsub("^unreadable: ", "") .. ").\n\n"
+            .. "Replace it with a fresh one? The current file is kept as app.json.bak.")
+    if ui.Dialogs.question(App.window, missing and "No app.json" or "Broken app.json", message) ~= true then
+        return nil
+    end
+    if not missing then
+        pcall(fs.FileSystem.copyFile, projectFile, projectFile .. ".bak")
+    end
+    local config = ProjectManager.defaultConfig(name)
+    local written = pcall(fs.FileSystem.writeFile, projectFile,
+        fs.FileSystem.formatJSON(json.stringify(config)))
+    if not written then
+        ui.Dialogs.critical(App.window, "Could not write app.json",
+            "Limer could not write " .. projectFile .. ". Check the folder is writable.")
+        return nil
+    end
+    return config
+end
+
 function ProjectManager.loadProject(projectFile)
+    local config, why = ProjectManager.readConfig(projectFile)
+    if not config then
+        config = repairConfig(projectFile, why)
+        if not config then return false end
+    end
+
     local fileFolderLocation = fs.FileSystem.getDirName(projectFile)
     AppState.activeProjectPath = fileFolderLocation
-    ProjectManager.PROJECT_CONFIG = json.parse(fs.FileSystem.readFile(projectFile))
+    ProjectManager.PROJECT_CONFIG = config
 
     ProjectManager._projectData = {
         folder = fileFolderLocation,

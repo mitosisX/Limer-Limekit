@@ -149,7 +149,24 @@ function ProjectCreator._createProjectFiles(modal, name, version, iconPath)
     fs.FileSystem.createFolder(fs.FileSystem.joinPaths(projectFolder, "images"))
     fs.FileSystem.createFolder(fs.FileSystem.joinPaths(projectFolder, "misc"))
 
-    local mainLua = "-- Welcome to the new era for modern lua gui development\n\nwindow = Window{title='New app - Limekit', icon = images('app.png'), size={400, 400}}\nwindow:show()"
+    -- A 2.0 project from the start: modules, not globals -- the same style
+    -- the designer generates, so a designed window drops straight in.
+    local mainLua = table.concat({
+        "-- " .. name .. ": start here.",
+        "-- Design windows in Limer's Designer (toolbar, Ctrl+Shift+D). Generate",
+        "-- writes them to scripts/designed/, and main.lua requires them:",
+        "--     local main = require(\"designed.main\")",
+        "--     main.window:show()",
+        "",
+        "local ui  = require(\"limekit.ui\")",
+        "local res = require(\"limekit.res\")",
+        "",
+        "local window = ui.Window { title = " .. string.format("%q", name)
+            .. ", icon = res.Resources.images(\"app.png\") }",
+        "window:setSize(400, 400)",
+        "window:show()",
+        "",
+    }, "\n")
 
     fs.FileSystem.writeFile(
         fs.FileSystem.joinPaths(projectFolder, "scripts", "main.lua"),
@@ -157,6 +174,8 @@ function ProjectCreator._createProjectFiles(modal, name, version, iconPath)
     )
 
     local projectConfig = {
+        -- Declared, so Run and Build pick the 2.0 engine without guessing.
+        api = "2.0",
         project = {
             name = name,
             author = "",

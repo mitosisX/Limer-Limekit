@@ -107,8 +107,8 @@ code with hand-edited code is what kills these tools.
 
 ### Images
 
-The **Images** tab -- in the project workspace, and beside the palette in
-the designer -- manages the project's `images/` folder. Make folders to keep
+The designer's **Images** panel, beside the widget palette, manages the
+project's `images/` folder -- right where the images get used. Make folders to keep
 icons apart from photos, drop image files in from Explorer, Finder or your
 file manager, drag images between folders, rename them, delete them (to the
 trash). Thumbnails show what each one is.
