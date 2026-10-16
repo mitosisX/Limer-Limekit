@@ -610,6 +610,17 @@ local function setterName(prop)
     return "set" .. prop:sub(1, 1):upper() .. prop:sub(2)
 end
 
+-- The arguments a stored property value is set with. Most are one
+-- literal; a list is a table literal -- setItems({ "A", "B" }) -- and
+-- { args = { 0, 100 } } is spread over several -- setRange(0, 100).
+local function callArgs(value)
+    if type(value) ~= "table" then return literal(value) end
+    local parts = {}
+    for _, item in ipairs(value.args or value) do parts[#parts + 1] = literal(item) end
+    if value.args then return table.concat(parts, ", ") end
+    return "{ " .. table.concat(parts, ", ") .. " }"
+end
+
 -- images.logo, or images["end"] for a name Lua reserves.
 local function imageRef(key)
     if RESERVED[key] and key ~= "window" and key ~= "root" and key ~= "M" and key ~= "ui" then
@@ -624,7 +635,7 @@ local function emitWidgets(node, lines)
     lines[#lines + 1] = ("M.%s = %s()"):format(node.name, node.class)
     for _, key in ipairs(sortedKeys(node.props)) do
         lines[#lines + 1] = ("M.%s:%s(%s)"):format(
-            node.name, setterName(key), literal(node.props[key]))
+            node.name, setterName(key), callArgs(node.props[key]))
     end
     for _, slot in ipairs(sortedKeys(node.images)) do
         lines[#lines + 1] = ("M.%s:%s(%s)"):format(

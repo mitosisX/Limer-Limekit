@@ -352,6 +352,11 @@ function callbacks.onProp(node, name, value)
     mutate(function(d)
         local n = nodeAt(d, path)
         if not n then return false, "gone" end
+        -- nil is "not set": the generated code leaves the widget's default.
+        if value == nil then
+            n.props[name] = nil
+            return true
+        end
         -- The live widget is asked first: it coerces, validates, and reads
         -- back what it actually holds, which is what the model records.
         local widget = S.canvas:widgetFor(node)
@@ -359,7 +364,8 @@ function callbacks.onProp(node, name, value)
         if not ok then return false, "could not set " .. name .. ": " .. tostring(result) end
         n.props[name] = result
         return true
-    end, node.name .. "." .. name .. " = " .. tostring(value))
+    end, value == nil and (node.name .. "." .. name .. " cleared")
+        or (node.name .. "." .. name .. " = " .. (type(value) == "table" and "{...}" or tostring(value))))
 end
 
 function callbacks.onRename(node, name)

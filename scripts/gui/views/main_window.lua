@@ -3,7 +3,6 @@
 
 local ui  = require("limekit.ui")
 local res = require("limekit.res")
-local sys = require("limekit.sys")
 
 local App = require "app.core.app"
 local Styles = require "gui.styles.init"
@@ -97,6 +96,23 @@ function MainWindow.create()
     -- console most of the height.
     homescreenSplitter:setStretchFactors({ 3, 1 })
 
+    -- Three quarters workspace, one quarter console, until the user drags
+    -- the divider -- then their choice stands. Kept on every resize rather
+    -- than set once: on a real desktop the window manager finishes
+    -- maximising after the window is shown, and sizes set before that were
+    -- overridden, leaving the console two thirds of the window.
+    local userSplit = false
+    homescreenSplitter:setOnMove(function() userSplit = true end)
+    local function fitSplit()
+        if userSplit then return end
+        local total = 0
+        for _, size in ipairs(homescreenSplitter:getSizes()) do total = total + size end
+        if total <= 0 then return end
+        local console = math.max(140, math.floor(total * 0.26))
+        homescreenSplitter:setSizes({ total - console, console })
+    end
+    window:setOnResize(fitSplit)
+
     window:setMainChild(homescreenSplitter)
 
     -- Closing Limer closes the designer with it -- after asking, if it
@@ -113,17 +129,7 @@ function MainWindow.create()
     window:setOnShown(function()
         window:maximize()
 
-        -- Roughly three quarters workspace, one quarter console. Without
-        -- this the splitter falls back to the two children's size hints and
-        -- gave the console two thirds of the window. The sizes are real
-        -- pixels from the maximised height, set a moment later: { 74, 26 }
-        -- set here, before the window manager had finished maximising, was
-        -- overridden and never took effect.
-        sys.Timer.singleShot(250, function()
-            local _, height = window:getSize()
-            local console = math.max(160, math.floor(height * 0.26))
-            homescreenSplitter:setSizes({ height - console, console })
-        end)
+        fitSplit()
 
         ProjectManager.listAvailableProjects()
     end)

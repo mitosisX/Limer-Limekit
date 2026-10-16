@@ -1,0 +1,135 @@
+-- Catalog
+-- The properties the designer offers for each widget: the ones a person
+-- designing a window actually sets, not every property the widget declares.
+--
+-- Introspection lists what a class *has* -- for most widgets that is
+-- enabled, styleSheet and toolTip, while the setters that matter (a
+-- LineEdit's hint, a Spinner's range, a ComboBox's items) are methods it
+-- cannot see. So the list is written down here instead, one line per
+-- property, by the setter's name: `hint` is set with setHint.
+--
+-- Each entry: { name, kind, options }. Kinds:
+--   string, int, float, bool   one value
+--   enum                       one of `options`
+--   colour                     a colour name or #rrggbb
+--   list                       several strings, typed comma-separated;
+--                              stored as a table, generated as setItems({ ... })
+--   pair                       two numbers, typed "0, 100"; stored as
+--                              { args = { 0, 100 } }, generated as setRange(0, 100)
+--
+-- A class missing from the table falls back to what introspection finds.
+
+local Catalog = {}
+
+local ALIGN = { "left", "center", "right", "justify", "hcenter", "vcenter", "top", "bottom" }
+local ORIENT = { "horizontal", "vertical" }
+
+Catalog.CLASSES = {
+    ["ui.Button"] = {
+        { "text", "string" }, { "flat", "bool" }, { "checkable", "bool" }, { "checked", "bool" },
+    },
+    ["ui.CommandButton"] = { { "text", "string" }, { "description", "string" } },
+    ["ui.CheckBox"] = { { "text", "string" }, { "checked", "bool" } },
+    ["ui.RadioButton"] = { { "text", "string" }, { "checked", "bool" } },
+    ["ui.Label"] = {
+        { "text", "string" }, { "wordWrap", "bool" }, { "textAlignment", "enum", ALIGN },
+        { "bold", "bool" }, { "textSize", "int" }, { "textColor", "colour" },
+    },
+    ["ui.LineEdit"] = {
+        { "text", "string" }, { "hint", "string" }, { "readOnly", "bool" },
+        { "inputMode", "enum", { "normal", "password", "passwordonedit", "hideinput" } },
+    },
+    ["ui.TextField"] = {
+        { "plainText", "string" }, { "hint", "string" }, { "readOnly", "bool" },
+        { "wrapMode", "enum", { "widget", "none" } },
+    },
+    ["ui.ComboBox"] = { { "items", "list" }, { "currentIndex", "int" }, { "editable", "bool" } },
+    ["ui.Spinner"] = { { "range", "pair" }, { "value", "int" }, { "prefix", "string" }, { "suffix", "string" } },
+    ["ui.DoubleSpinner"] = { { "range", "pair" }, { "value", "float" }, { "prefix", "string" }, { "suffix", "string" } },
+    ["ui.Slider"] = {
+        { "range", "pair" }, { "value", "int" }, { "orientation", "enum", ORIENT },
+        { "tickPosition", "enum", { "none", "above", "below", "bothsides", "left", "right" } },
+    },
+    ["ui.AdvancedSlider"] = { { "range", "pair" }, { "value", "float" }, { "prefix", "string" }, { "suffix", "string" } },
+    ["ui.Knob"] = { { "range", "pair" }, { "value", "int" }, { "notchesVisible", "bool" } },
+    ["ui.ProgressBar"] = { { "range", "pair" }, { "value", "int" }, { "orientation", "enum", ORIENT } },
+    ["ui.LCDNumber"] = {
+        { "digitCount", "int" }, { "value", "float" }, { "segmentStyle", "enum", { "filled", "flat", "outline" } },
+    },
+    ["ui.Calendar"] = { { "gridVisible", "bool" } },
+    ["ui.Image"] = { { "imageSize", "pair" } },
+    ["ui.GroupBox"] = { { "title", "string" }, { "checkable", "bool" }, { "checked", "bool" }, { "flat", "bool" } },
+    ["ui.Tab"] = {
+        { "tabPosition", "enum", { "top", "bottom", "left", "right" } },
+        { "movable", "bool" }, { "tabsClosable", "bool" },
+    },
+    ["ui.Splitter"] = { { "orientation", "enum", ORIENT }, { "handleWidth", "int" } },
+    ["ui.Scroller"] = { { "resizable", "bool" } },
+    ["ui.ListBox"] = { { "items", "list" } },
+    ["ui.Table"] = {
+        { "columnHeaders", "list" }, { "rowCount", "int" }, { "showGrid", "bool" },
+        { "alternatingRowColors", "bool" }, { "stretchLastColumn", "bool" },
+    },
+    ["ui.TreeView"] = { { "headerLabels", "list" }, { "headerHidden", "bool" } },
+    ["ui.Container"] = {},
+    ["ui.Accordion"] = {},
+}
+Catalog.CLASSES["ui.TreeWidget"] = Catalog.CLASSES["ui.TreeView"]
+Catalog.CLASSES["ui.FontComboBox"] = { { "editable", "bool" } }
+
+-- Every widget, after its own: how it sizes and what it says on hover.
+Catalog.COMMON = {
+    { "toolTip", "string" }, { "enabled", "bool" },
+    { "minWidth", "int" }, { "minHeight", "int" }, { "maxWidth", "int" }, { "maxHeight", "int" },
+}
+
+--- The entries for a class, or nil when it has none written down.
+function Catalog.forClass(class)
+    return Catalog.CLASSES[class]
+end
+
+-- PARSING AND SHOWING VALUES ---------------------------------------------------
+
+--- What a stored value looks like in its cell.
+function Catalog.show(kind, value)
+    if value == nil then return "" end
+    if kind == "list" and type(value) == "table" then return table.concat(value, ", ") end
+    if kind == "pair" and type(value) == "table" then
+        local a = value.args or value
+        return tostring(a[1] or "") .. ", " .. tostring(a[2] or "")
+    end
+    return tostring(value)
+end
+
+local function trim(s) return (s:gsub("^%s+", ""):gsub("%s+$", "")) end
+
+--- The value typed into a cell, or nil and a reason if it does not parse.
+--- Empty text means "not set" and returns false (distinct from nil).
+function Catalog.parse(kind, text)
+    text = trim(text or "")
+    if text == "" then return false end
+    if kind == "int" then
+        local n = math.tointeger(tonumber(text))
+        if not n then return nil, "a whole number" end
+        return n
+    elseif kind == "float" then
+        local n = tonumber(text)
+        if not n then return nil, "a number" end
+        return n
+    elseif kind == "list" then
+        local items = {}
+        for part in (text .. ","):gmatch("([^,]*),") do
+            part = trim(part)
+            if part ~= "" then items[#items + 1] = part end
+        end
+        return items
+    elseif kind == "pair" then
+        local a, b = text:match("^(%-?[%d.]+)%s*[,;%s]%s*(%-?[%d.]+)$")
+        a, b = tonumber(a), tonumber(b)
+        if not a or not b then return nil, "two numbers, like 0, 100" end
+        return { args = { math.tointeger(a) or a, math.tointeger(b) or b } }
+    end
+    return text
+end
+
+return Catalog

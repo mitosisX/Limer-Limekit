@@ -153,6 +153,27 @@ function ProjectManager._showDirectory(node, path, isRoot)
     end
 end
 
+--- A project's icon: app.json's "icon" (a path inside its images folder)
+--- if it names one that exists, else images/app.png or app.ico -- what the
+--- Application tab and a build use -- else the OS's folder icon.
+function ProjectManager.projectIcon(folder)
+    local images = fs.FileSystem.joinPaths(folder, "images")
+    local candidates = {}
+    local ok, config = pcall(function()
+        return json.parse(fs.FileSystem.readFile(fs.FileSystem.joinPaths(folder, "app.json")))
+    end)
+    local named = ok and type(config) == "table" and type(config.project) == "table" and config.project.icon
+    if type(named) == "string" and named ~= "" then
+        candidates[#candidates + 1] = fs.FileSystem.joinPaths(images, named)
+    end
+    candidates[#candidates + 1] = fs.FileSystem.joinPaths(images, "app.png")
+    candidates[#candidates + 1] = fs.FileSystem.joinPaths(images, "app.ico")
+    for _, path in ipairs(candidates) do
+        if fs.FileSystem.exists(path) then return path end
+    end
+    return fs.FileSystem.getFileIcon(folder)
+end
+
 --- The icon a file shows in the Project tree: the operating system's own
 --- for its type, a thumbnail for an image, and Limer's for a .lua file --
 --- which most systems have no association, and so no icon, for.
@@ -178,10 +199,11 @@ function ProjectManager.listAvailableProjects()
 
     local dockList = App.dockables.userProjectsListDock.userProjectsList
     dockList:clear()
-    -- Each with the OS's own folder icon, so the list reads as folders.
+    -- Each with its own app icon, so projects are told apart at a glance;
+    -- a project without one shows the OS's folder icon.
     for _, name in ipairs(projects) do
         local folder = fs.FileSystem.joinPaths(ProjectManager.PROJECTS_FOLDER, name)
-        dockList:addImageItem(name, fs.FileSystem.getFileIcon(folder))
+        dockList:addImageItem(name, ProjectManager.projectIcon(folder))
     end
 
     return projects

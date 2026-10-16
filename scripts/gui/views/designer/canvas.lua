@@ -58,13 +58,22 @@ end
 --- declared property if there is one, else the plain setter (minWidth and
 --- minHeight are methods, not declared properties). Returns ok, result.
 function Canvas.apply(widget, name, value)
-    local ok, result = pcall(sys.Introspect.setProperty, widget, name, value)
-    if ok then return true, result end
-    local setter = widget["set" .. name:sub(1, 1):upper() .. name:sub(2)]
-    if type(setter) ~= "function" and type(setter) ~= "userdata" then
+    if type(value) ~= "table" then
+        local ok, result = pcall(sys.Introspect.setProperty, widget, name, value)
+        if ok then return true, result end
+    end
+    local found, setter = pcall(function() return widget["set" .. name:sub(1, 1):upper() .. name:sub(2)] end)
+    if not found or (type(setter) ~= "function" and type(setter) ~= "userdata") then
         return false, "no property " .. name
     end
-    local called, err = pcall(setter, widget, value)
+    -- { args = { 0, 100 } } is spread: setRange(0, 100). A plain list is
+    -- one argument: setItems({ "A", "B" }).
+    local called, err
+    if type(value) == "table" and value.args then
+        called, err = pcall(setter, widget, table.unpack(value.args))
+    else
+        called, err = pcall(setter, widget, value)
+    end
     if not called then return false, tostring(err) end
     return true, value
 end

@@ -22,7 +22,6 @@ function MainToolbar.create()
         runButton = ui.ToolbarButton('Run'),
         buildButton = ui.ToolbarButton('Build'),
         designerButton = ui.ToolbarButton('Designer'),
-        themeButton = ui.ToolbarButton('Dark'),
         -- One button, not two. See gui/navigation.lua.
         viewToggleButton = ui.ToolbarButton('My Project')
     }
@@ -83,19 +82,6 @@ function MainToolbar.create()
             App.designer.show()
         end)
 
-        -- Light and dark. Offers the theme that is not on; follows a switch
-        -- made anywhere else (the View menu, the designer) through observe.
-        local Theme = require "app.core.theme"
-        local function paintThemeButton()
-            local label = Theme.offer()
-            self.themeButton:setText(label)
-            self.themeButton:setIcon(res.Resources.images('designer/' .. label:lower() .. '.svg'))
-            self.themeButton:setToolTip('Switch to the ' .. label:lower() .. ' theme')
-        end
-        self.themeButton:setOnClick(Theme.toggle)
-        paintThemeButton()
-        Theme.observe(paintThemeButton)
-
         -- Dead until there is a project to switch to. Before one is open
         -- both pages are the home page.
         self.viewToggleButton:setEnabled(false)
@@ -116,8 +102,6 @@ function MainToolbar.create()
         self.toolbar:addButton(self.designerButton)
         self.toolbar:addSeparator()
         self.toolbar:addButton(self.viewToggleButton)
-        self.toolbar:addSeparator()
-        self.toolbar:addButton(self.themeButton)
     end
 
     initUI()

@@ -12,6 +12,7 @@ local ui  = require("limekit.ui")
 local sys = require("limekit.sys")
 local DesignModel = require "app.core.design_model"
 local Images = require "app.core.images"
+local Catalog = require "gui.views.designer.catalog"
 
 local Properties = {}
 Properties.__index = Properties
@@ -56,12 +57,41 @@ local function later(fn)
     sys.Timer.singleShot(0, fn)
 end
 
+-- The value a widget shows before the design sets one, read through its
+-- getter (getText, isChecked...). Only for plain values; nil if none.
+local function current(widget, name)
+    local cap = name:sub(1, 1):upper() .. name:sub(2)
+    for _, prefix in ipairs({ "get", "is" }) do
+        local ok, getter = pcall(function() return widget[prefix .. cap] end)
+        if ok and getter then
+            local called, value = pcall(getter, widget)
+            local t = type(value)
+            if called and (t == "string" or t == "number" or t == "boolean") then return value end
+        end
+    end
+    return nil
+end
+
+-- How each catalogue kind is edited in the table. list and pair are typed
+-- as text and read back by Catalog.parse.
+local ROW_KINDS = { string = "string", colour = "string", int = "int", float = "float",
+                    bool = "boolean", enum = "enum", list = "parsed", pair = "parsed" }
+
+-- One catalogue entry as a row.
+local function catalogRow(row, node, widget, entry, cb)
+    local name, kind, options = entry[1], entry[2], entry[3]
+    local value = node.props[name]
+    if value == nil and kind ~= "list" and kind ~= "pair" then value = current(widget, name) end
+    row(name, value, ROW_KINDS[kind] or "string", function(v) cb.onProp(node, name, v) end, options, kind)
+end
+
 -- Each row: { label, value, kind, apply(value), options }.
 -- kind: "section" | "string" | "int" | "float" | "boolean" | "enum" | "readonly"
 function Properties:rowsFor(design, node, widget)
     local rows, cb = {}, self.cb
-    local function row(label, value, kind, apply, options)
-        rows[#rows + 1] = { label = label, value = value, kind = kind, apply = apply, options = options }
+    local function row(label, value, kind, apply, options, catalog)
+        rows[#rows + 1] = { label = label, value = value, kind = kind, apply = apply,
+                            options = options, catalog = catalog }
     end
     local function section(title)
         row(title, nil, "section")
@@ -122,22 +152,40 @@ function Properties:rowsFor(design, node, widget)
     end
 
     if widget and not node.buildError then
-        local ok, props = pcall(sys.Introspect.properties, widget)
-        if ok then
-            section(node.class:match("%.(.+)$") or node.class)
-            for _, prop in ipairs(props) do
-                if prop.settable and not HIDDEN[prop.name] then
-                    local kind = prop.options and "enum"
-                        or (prop.type == "str" and "string")
-                        or (prop.type == "nil" and "string")
-                        or prop.type
-                    row(prop.name, prop.value, kind,
-                        function(v) cb.onProp(node, prop.name, v) end, prop.options)
+        local entries = Catalog.forClass(node.class)
+        if entries then
+            -- The catalogue: what designing this widget needs, by setter.
+            if #entries > 0 then section(node.class:match("%.(.+)$") or node.class) end
+            for _, entry in ipairs(entries) do catalogRow(row, node, widget, entry, cb) end
+        else
+            -- A widget nobody has written a list for: what it declares.
+            local ok, props = pcall(sys.Introspect.properties, widget)
+            if ok then
+                section(node.class:match("%.(.+)$") or node.class)
+                for _, prop in ipairs(props) do
+                    if prop.settable and not HIDDEN[prop.name] then
+                        local kind = prop.options and "enum"
+                            or (prop.type == "str" and "string")
+                            or (prop.type == "nil" and "string")
+                            or prop.type
+                        row(prop.name, prop.value, kind,
+                            function(v) cb.onProp(node, prop.name, v) end, prop.options)
+                    end
                 end
             end
         end
+        section("Common")
+        for _, entry in ipairs(Catalog.COMMON) do catalogRow(row, node, widget, entry, cb) end
     end
     return rows
+end
+
+-- A cell that shows text but cannot be typed into: every label, every
+-- section band, and a read-only value.
+function Properties:lock(row, column)
+    local item = self.table:getCellItem(row, column)
+    if item then item:setEditable(false) end
+    return item
 end
 
 function Properties:show(node, widget, design)
@@ -151,7 +199,7 @@ function Properties:show(node, widget, design)
             self.table:setCellText(i, 1, r.label:upper())
             self.table:setCellText(i, 2, "")
             for column = 1, 2 do
-                local item = self.table:getCellItem(i, column)
+                local item = self:lock(i, column)
                 if item then
                     item:setBackgroundColour(SECTION_BACKGROUND)
                     item:setTextColour(SECTION_TEXT)
@@ -159,6 +207,7 @@ function Properties:show(node, widget, design)
             end
         else
             self.table:setCellText(i, 1, r.label)
+            self:lock(i, 1)
         end
 
         if r.kind == "boolean" then
@@ -172,16 +221,22 @@ function Properties:show(node, widget, design)
             end)
             self.table:setCellChild(i, 2, box)
         elseif r.kind == "enum" then
+            -- A catalogue choice not yet made reads "(default)" rather than
+            -- showing the first option as though it had been picked.
+            local options, values = {}, {}
+            if r.catalog then options[1], values[1] = "(default)", false end
+            for _, option in ipairs(r.options) do
+                options[#options + 1], values[#values + 1] = option, option
+            end
             local combo = ui.ComboBox()
-            combo:addItems(r.options)
-            for k, option in ipairs(r.options) do
-                if option == r.value then combo:setCurrentIndex(k) end
+            combo:addItems(options)
+            for k, value in ipairs(values) do
+                if value == (r.value or false) then combo:setCurrentIndex(k) end
             end
             combo:setOnItemSelect(function(_, index)
-                if not self.filling and r.options[index] and r.options[index] ~= r.value then
-                    local chosen = r.options[index]
-                    later(function() r.apply(chosen) end)
-                end
+                local chosen = values[index]
+                if self.filling or chosen == nil or chosen == (r.value or false) then return end
+                later(function() r.apply(chosen or nil) end)
             end)
             self.table:setCellChild(i, 2, combo)
         elseif r.kind == "image" then
@@ -210,37 +265,51 @@ function Properties:show(node, widget, design)
                 later(function() r.apply(chosen or nil) end)
             end)
             self.table:setCellChild(i, 2, combo)
+        elseif r.kind == "parsed" then
+            self.table:setCellText(i, 2, Catalog.show(r.catalog, r.value))
         elseif r.kind ~= "section" then
             local shown = r.value
             if shown == nil then shown = "" end
             self.table:setCellText(i, 2, tostring(shown))
+            if r.kind == "readonly" then self:lock(i, 2) end
         end
     end
     self.filling = false
 end
 
+-- Puts a value cell back to what the row holds: after text that does not
+-- parse, rather than sending it on.
+function Properties:restore(row, r)
+    self.filling = true
+    local shown = r.kind == "parsed" and Catalog.show(r.catalog, r.value)
+        or tostring(r.value == nil and "" or r.value)
+    self.table:setCellText(row, 2, shown)
+    self.filling = false
+end
+
 function Properties:edited(row, column)
-    if self.filling then return end
+    if self.filling or column ~= 2 then return end
     local r = self.rows[row]
-    if not r then return end
-    if column ~= 2 or r.kind == "section" or r.kind == "readonly" then
-        -- Labels are not values; put back whatever was typed over them.
-        self.filling = true
-        self.table:setCellText(row, 1, r.kind == "section" and r.label:upper() or r.label)
-        if r.kind == "section" then
-            self.table:setCellText(row, 2, "")
-        elseif r.kind == "readonly" then
-            self.table:setCellText(row, 2, tostring(r.value or ""))
-        end
-        self.filling = false
+    if not r or r.kind == "section" or r.kind == "readonly"
+        or r.kind == "boolean" or r.kind == "enum" or r.kind == "image" then
         return
     end
-    if r.kind == "boolean" or r.kind == "enum" or r.kind == "image" then return end
 
     local item = self.table:getCellItem(row, 2)
     local text = item and item:getText() or ""
+
+    -- A catalogue value emptied is "not set": the widget keeps its default.
+    if r.catalog and r.catalog ~= "string" and r.catalog ~= "colour" and text:match("^%s*$") then
+        if r.value ~= nil then later(function() r.apply(nil) end) end
+        return
+    end
+
     local value = text
-    if r.kind == "int" then
+    if r.kind == "parsed" then
+        local parsed = Catalog.parse(r.catalog, text)
+        if not parsed then self:restore(row, r); return end
+        value = parsed
+    elseif r.kind == "int" then
         value = math.tointeger(tonumber(text))
     elseif r.kind == "float" then
         value = tonumber(text)
@@ -248,9 +317,7 @@ function Properties:edited(row, column)
     if value == nil then
         -- Not a number: put the old value back rather than send text where
         -- a number is expected.
-        self.filling = true
-        self.table:setCellText(row, 2, tostring(r.value == nil and "" or r.value))
-        self.filling = false
+        self:restore(row, r)
         return
     end
     if value == r.value then return end

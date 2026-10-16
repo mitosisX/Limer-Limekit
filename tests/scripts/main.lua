@@ -507,5 +507,36 @@ check("a design names its images, and generates them by name", function()
     eq(back.window.icon, "logo"); eq(back.root.children[1].images.icon, "save")
 end)
 
+-- CATALOGUE -----------------------------------------------------------------
+
+local Catalog = require("gui.views.designer.catalog")
+
+check("catalogue values parse from what is typed, and show back", function()
+    eq(Catalog.parse("int", " 42 "), 42); eq(Catalog.parse("int", "x"), nil)
+    eq(Catalog.parse("int", "  "), false)
+    local pair = Catalog.parse("pair", "0, 100")
+    eq(pair.args[1], 0); eq(pair.args[2], 100)
+    eq(Catalog.parse("pair", "0"), nil)
+    local list = Catalog.parse("list", "Red, , Green ,Blue")
+    eq(#list, 3); eq(list[2], "Green")
+    eq(Catalog.show("pair", pair), "0, 100"); eq(Catalog.show("list", list), "Red, Green, Blue")
+    assert(Catalog.forClass("ui.Button") and Catalog.forClass("ui.LineEdit"))
+end)
+
+check("lists and argument lists generate as one table and as spread args", function()
+    local d = DesignModel.blank()
+    local spin = DesignModel.node("ui.Spinner")
+    spin.props.range = { args = { 0, 50 } }
+    local combo = DesignModel.node("ui.ComboBox")
+    combo.props.items = { "Red", "Green" }
+    assert(DesignModel.insert(d, d.root, spin, { index = 1 }))
+    assert(DesignModel.insert(d, d.root, combo, { index = 2 }))
+    local src = DesignModel.generate(d, "main")
+    assert(src:find("M.spinner1:setRange(0, 50)", 1, true), src)
+    assert(src:find('M.comboBox1:setItems({ "Red", "Green" })', 1, true), src)
+    local back = assert(DesignModel.deserialize(DesignModel.serialize(d)))
+    eq(back.root.children[1].props.range.args[2], 50)
+end)
+
 print(string.format("\n%d checks, %d failed", count, failures))
 sys.System.exit(failures == 0 and 0 or 1)
