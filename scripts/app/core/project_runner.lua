@@ -107,8 +107,8 @@ function ProjectRunner.run(projectPath)
         ProjectRunner.process = nil
         App.console.error(ProjectRunner.projectName .. " was made for Limekit 1.x, "
             .. "which this version of Limer no longer runs.")
-        App.console.log("The Limer 1.x release still runs it. To bring it across instead, "
-            .. "see \"Migrating from 1.x\" in the Limekit documentation.")
+        App.console.log("To bring it across, see \"Migrating from 1.x\" "
+            .. "in the Limekit documentation.")
         App.console.status("error", "Cannot run  " .. ProjectRunner.projectName,
                            "a Limekit 1.x project")
         return
