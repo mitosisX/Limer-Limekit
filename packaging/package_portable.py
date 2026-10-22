@@ -13,8 +13,8 @@ Limer is not frozen with PyInstaller. A real interpreter ships instead, so
 one into an app (`-m PyInstaller`, which ships in the bundle). A frozen
 Limer can do neither: there, `sys.executable` is Limer.exe itself.
 
-Usage:
-    python package_portable.py [options]
+Usage (from Limer's folder):
+    python packaging/package_portable.py [options]
 
 Options:
     --limekit PATH  Limekit checkout to install (default: ../Limekit)
@@ -37,7 +37,8 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-HERE = Path(__file__).resolve().parent
+# Limer's own folder: this script lives in packaging/, one level down.
+HERE = Path(__file__).resolve().parents[1]
 CACHE = HERE / "build" / "portable-cache"
 
 # python-build-standalone: the portable CPython builds that uv installs.
@@ -179,7 +180,7 @@ def install_limekit(python, limekit):
     subprocess.run(
         [str(python), "-I", "-m", "pip", "install",
          "--no-warn-script-location", "--disable-pip-version-check",
-         "-c", str(HERE / "portable-constraints.txt"), f"{limekit}[build]"],
+         "-c", str(Path(__file__).with_name("portable-constraints.txt")), f"{limekit}[build]"],
         check=True, env=clean_env(),
     )
 

@@ -5,7 +5,7 @@
 # the Ctrl+K API index, which is generated from Limekit's registry.
 #
 # `build` runs only when started by hand (Actions -> CI -> Run workflow):
-# it assembles portable Limer (package_portable.py -- a bundled Python, not a
+# it assembles portable Limer (packaging/package_portable.py -- a bundled Python, not a
 # PyInstaller freeze) and uploads the zip as a workflow artifact. Windows only
 # until the portable build supports Linux and macOS. Attaching it to a GitHub
 # Release is a separate step, not wired up yet.
@@ -90,7 +90,7 @@ jobs:
         run: python -m pip install pillow pyinstaller
 
       - name: Build portable Limer
-        run: python package_portable.py --limekit limekit-src --zip
+        run: python packaging/package_portable.py --limekit limekit-src --zip
 
       - uses: actions/upload-artifact@v7
         with:
