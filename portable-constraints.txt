@@ -1,0 +1,32 @@
+# Exact versions installed into the portable Python that ships inside Limer.
+#
+# Pinned to the set Limekit's test suite passes on, so every Limer download
+# carries a combination that has actually been tested. Bump deliberately:
+# change a version, rebuild with package_portable.py, and re-run the checks
+# before releasing.
+
+PySide6==6.11.0
+PySide6_Essentials==6.11.0
+PySide6_Addons==6.11.0
+shiboken6==6.11.0
+lupa==2.8
+emoji==2.15.0
+pyqtdarktheme==0.1.7
+darkdetect==0.8.0
+QDarkStyle==3.2.3
+QtPy==2.4.3
+qt-material==2.17
+Jinja2==3.1.6
+MarkupSafe==3.0.3
+psutil==7.2.2
+
+# Limer's Build button: PyInstaller and what it pulls in. Verified
+# 2026-10-22: a project built from the bundle ran on a machine with no
+# Python on PATH.
+pyinstaller==6.21.0
+pyinstaller-hooks-contrib==2026.6
+altgraph==0.17.5
+pefile==2024.8.26
+pywin32-ctypes==0.2.3
+setuptools==84.2.1
+packaging==26.3

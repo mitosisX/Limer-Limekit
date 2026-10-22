@@ -2,6 +2,10 @@
 Limer Build Script
 Run this to build Limer into a standalone executable.
 
+NOT FOR RELEASES. A PyInstaller-frozen Limer cannot run projects: its
+sys.executable is Limer itself, with no interpreter to start one with. Release
+builds come from package_portable.py, which ships a real Python instead.
+
 Usage:
     python build.py [options]
 
