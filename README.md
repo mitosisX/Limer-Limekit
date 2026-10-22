@@ -61,7 +61,13 @@ notepad, kanban board, spreadsheet, minesweeper, SQLite browser, charts — and
 read the [documentation](https://limekit.readthedocs.io/).
 
 <p align="center">
-  <img src="images/screenshots/app-kanban.png" width="620" alt="The Kanban example: four columns of cards, built with Limekit">
+  <img src="images/screenshots/app-charts.png" width="720" alt="The Charts example: grouped, stacked, percent and sideways bar charts, built with Limekit">
+</p>
+
+<p align="center">
+  <img src="images/screenshots/app-tic-tac-toe.png" width="300" alt="The Tic-Tac-Toe example, a game in progress">
+  &nbsp;&nbsp;
+  <img src="images/screenshots/app-calculator.png" width="300" alt="The Calculator example">
 </p>
 
 ## 🧭 How Limer is laid out
