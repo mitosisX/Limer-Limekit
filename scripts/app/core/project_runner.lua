@@ -4,7 +4,7 @@
 -- The console used to say "Starting project..." and then nothing at all
 -- until "Project stopped", so a running project was indistinguishable from
 -- one that had died on the first line. It now reports three things it
--- always knew but never said: what it is about to run and on which engine,
+-- always knew but never said: what it is about to run and as which process,
 -- that the project is still running and for how long, and how it ended --
 -- finished on its own, stopped from here, or crashed.
 
@@ -100,22 +100,27 @@ function ProjectRunner.run(projectPath)
     ProjectRunner.projectName = basename(projectPath)
     ProjectRunner.process = sys.ProjectRunner(projectPath)
 
+    -- The 1.x engine is retired. Started anyway, a 1.x project would die on
+    -- its first flat global with a message that reads like the author's
+    -- mistake; say what is really going on instead.
+    if ProjectRunner.process:getApiVersion() ~= "2.0" then
+        ProjectRunner.process = nil
+        App.console.error(ProjectRunner.projectName .. " was made for Limekit 1.x, "
+            .. "which this version of Limer no longer runs.")
+        App.console.log("The Limer 1.x release still runs it. To bring it across instead, "
+            .. "see \"Migrating from 1.x\" in the Limekit documentation.")
+        App.console.status("error", "Cannot run  " .. ProjectRunner.projectName,
+                           "a Limekit 1.x project")
+        return
+    end
+
     -- The project opens an inspection channel only because we name one in
     -- its environment. That is the whole permission model: a project cannot
     -- decide to expose itself.
     local Inspector = require "app.core.inspector"
-    local supported, engine = Inspector.supports(ProjectRunner.process)
-
-    if not supported then
-        -- Said out loud rather than left as an inspector tab that never
-        -- fills in. A 1.x project runs through a different entry point
-        -- entirely, so there is nothing to wait for.
-        Inspector.unavailable("the " .. tostring(engine) .. " engine has no inspector")
-    else
-        local channelName = Inspector.prepare()
-        if channelName then
-            ProjectRunner.process:setEnvironmentValue("LIMEKIT_INSPECT", channelName)
-        end
+    local channelName = Inspector.prepare()
+    if channelName then
+        ProjectRunner.process:setEnvironmentValue("LIMEKIT_INSPECT", channelName)
     end
 
     ProjectRunner.process:setOnProcessReadyRead(function(data)
@@ -163,28 +168,25 @@ end
 function ProjectRunner._handleStart(projectPath)
     local runner = ProjectRunner.process
 
-    -- The engine is worth saying: both ship, and which one a project uses is
-    -- decided from its own app.json, so it explains behaviour that would
-    -- otherwise look arbitrary. The process id is worth saying because it is
-    -- how you find a stuck app and end it.
+    -- The process id is worth saying because it is how you find a stuck
+    -- app and end it.
     --
     -- The command is not. That a project runs by way of a Python interpreter
     -- is Limekit's business, not its author's -- and once Limer is built into
     -- an executable it will not be true in that form anyway. It stays
     -- available on sys.ProjectRunner:getCommand() for anything that wants a
     -- diagnostics view.
-    local engine = runner:getApiVersion()
     local pid = runner:getProcessId()
 
-    App.console.log("Running on the " .. engine .. " engine   (process " .. pid .. ")")
+    App.console.log("Running   (process " .. pid .. ")")
     App.console.rule("output")
 
-    startTicking("engine " .. engine .. "   *   process " .. pid)
+    startTicking("process " .. pid)
 
     -- Shown at once rather than a whole second later, which would look like
     -- nothing had happened.
     App.console.status("running", "Running  " .. ProjectRunner.projectName,
-                       "engine " .. engine .. "   *   process " .. pid .. "   *   0s")
+                       "process " .. pid .. "   *   0s")
 end
 
 function ProjectRunner._handleOutput(data)

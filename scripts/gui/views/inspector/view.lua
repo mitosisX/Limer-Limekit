@@ -256,17 +256,6 @@ function InspectorView.create()
             self.rows, self.selectedPath = nil, nil
             setStatus('the project has stopped')
         end,
-
-        --- The project is running, but on an engine with no channel to
-        --- offer. Saying so beats a tab that simply never fills in.
-        onUnavailable = function(reason)
-            setEnabled(false)
-            self.tree:clear()
-            self.props:clear()
-            self.rows, self.selectedPath = nil, nil
-            setStatus('not available: ' .. tostring(reason))
-            App.console.warn('Inspector: ' .. tostring(reason))
-        end,
     }
 
     Inspector.setView(api)
