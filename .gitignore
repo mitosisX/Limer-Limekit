@@ -1,3 +1,4 @@
 /.claude
 /build
 /dist
+__pycache__/
