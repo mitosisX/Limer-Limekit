@@ -7,6 +7,7 @@
 
 
             Chief Developer: Omega Msiska (github.com/mitosisx)
+            Copyright: Naveto Tech
 
         This source code is provided unobfuscated and written in simple Lua syntax
         in the hope that it is useful for educational purposes.
