@@ -86,8 +86,16 @@ jobs:
       # with one name would overwrite each other on the release.
       - name: The download is named for this build
         run: |
-          version=$(python -c "import json; print(json.load(open('app.json'))['project']['version'])")
-          ls dist/Limer-$version-${{ matrix.label }}.zip dist/Limer-$version-${{ matrix.label }}.tar.gz 2>/dev/null | grep .             || { echo "::error::no dist/Limer-$version-${{ matrix.label }}.* -- found: $(ls dist)"; exit 1; }
+          version=$(python -c "import json; print(json.load(open('app.json'))['project']['version'])" | tr -d '\r')
+          found=""
+          for f in "dist/Limer-$version-${{ matrix.label }}.zip" "dist/Limer-$version-${{ matrix.label }}.tar.gz"; do
+            if [ -f "$f" ]; then found="$f"; fi
+          done
+          if [ -z "$found" ]; then
+            echo "::error::no dist/Limer-$version-${{ matrix.label }}.zip or .tar.gz -- dist holds: $(ls dist | tr '\n' ' ')"
+            exit 1
+          fi
+          echo "download: $found"
 
       - name: Smoke test
         run: |
