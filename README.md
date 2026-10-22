@@ -77,10 +77,11 @@ read the [documentation](https://limekit.readthedocs.io/).
 </p>
 
 Limer creates, configures, runs and builds Limekit projects. You write the Lua
-in whatever editor you already use. Limekit ships Lua Language Server stubs
-describing the whole API, in `python/Lib/site-packages/limekit/runtime/lua/stubs`
-inside the Limer folder; pointing your editor's Lua extension at them, for
-completion and signatures, is a manual step for now.
+in whatever editor you already use. Every project Limer opens gets a
+`.luarc.json`, so an editor running lua-language-server -- VS Code with the
+**Lua** extension by sumneko, or Neovim -- completes the whole Limekit API,
+shows each method's docs and flags typos like `button:setTxt`, with nothing to
+set up.
 
 - **Left — Project.** The open project's files. Double-click one and it opens
   in whatever your desktop has registered for it.
@@ -228,46 +229,6 @@ Limer and Limekit are free, and made by one person. If they are useful to you,
 you can [buy me a coffee](https://buymeacoffee.com/omegamsiska).
 
 <a href="https://buymeacoffee.com/omegamsiska"><img src="images/buy-me-a-coffee.png" width="220" alt="Buy me a coffee"></a>
-
----
-
-## 🧑‍💻 Working on Limer
-
-Limer is itself a Limekit app — about ten thousand lines of Lua in `scripts/`.
-Working on it from source is the one place you need Python: install Python
-3.12+ and the Limekit framework from its
-[repository](https://github.com/mitosisX/Limekit), then from this folder:
-
-```console
-python -m limekit .              # run Limer
-python -m limekit tests          # run Limer's checks
-python packaging/package_portable.py --zip # the release zip (Windows)
-```
-
-The release is not a PyInstaller freeze. `package_portable.py` downloads a
-pinned, checksum-verified portable CPython, installs Limekit and the exact
-dependency versions in `portable-constraints.txt` into it, trims the parts of
-Qt that Limekit never uses, and puts a ~100 KB `Limer.exe` in front that starts
-it. A real interpreter is what lets Limer run your projects; a frozen Limer has
-none to start them with.
-
-The framework side of the designer — `ui.DesignSurface`, `ui.WidgetPalette`
-and `sys.Introspect` — lives in Limekit; Limer owns the model, the files and the
-generator (`scripts/app/core/design_model.lua`), whose checks are in `tests/`.
-
-### Regenerating the API index
-
-`scripts/data/api_index.lua` is generated from Limekit's registry — the same
-source its LSP stubs and manifest come from. The generator lives in the Limekit
-repository, not this one: Limer ships no Python, and nothing inside it should
-suggest otherwise. Re-run it from there whenever Limekit gains or loses API:
-
-```
-python tools/generate_api_index.py [path-to-Limer]      # write it
-python tools/generate_api_index.py --check              # fail if stale
-```
-
-It finds Limer from the argument, then `$LIMER_REPO`, then a sibling checkout.
 
 ## 📜 License
 
