@@ -18,14 +18,21 @@ so you never install it.
 
 ## 📥 Download
 
-1. Go to **[Releases](https://github.com/mitosisX/Limer-Limekit/releases)**
-2. Download `Limer-<version>-windows.zip`
-3. Unzip it anywhere and run **`Limer.exe`**
+Get the latest from **[Releases](https://github.com/mitosisX/Limer-Limekit/releases/latest)**:
+
+| Your computer | Download | Then |
+|---|---|---|
+| Windows 10/11 | `Limer-<version>-windows.zip` | Unzip anywhere, run **`Limer.exe`** |
+| Mac, Apple silicon (M1 and later) | `Limer-<version>-macos.zip` | Unzip, right-click **Limer** → **Open** |
+| Mac, Intel | `Limer-<version>-macos-intel.zip` | The same |
+| Linux, 64-bit | `Limer-<version>-linux.tar.gz` | Unpack, run **`Limer/Limer`** |
 
 That is the whole install. No Python, no packages, no toolchain, no setup
 wizard.
 
-> Windows builds are available today. macOS and Linux builds are on the way.
+> The downloads are not code-signed yet, so the first time, Windows says
+> *"Windows protected your PC"* (**More info → Run anyway**) and macOS asks
+> you to confirm (right-click → **Open**). The release notes cover each one.
 
 ## 🚀 Your first app
 
