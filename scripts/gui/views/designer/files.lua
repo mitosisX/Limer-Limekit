@@ -48,6 +48,8 @@ function Files.save(project, name, design)
 end
 
 function Files.writeGenerated(project, name, source)
+    local ok, why = Files.validName(name)
+    if not ok then return nil, why end
     local dir = generatedDir(project)
     if not FS.exists(dir) then FS.createFolder(dir) end
     local path = Files.generatedPath(project, name)
@@ -72,16 +74,27 @@ function Files.writePreview(project, name, source)
         FS.writeFile(FS.joinPaths(designed, name .. ".lua"), source)
         FS.writeFile(FS.joinPaths(scripts, "main.lua"),
             "-- Preview written by Limer's designer. Delete freely.\n" ..
-            'local design = require("designed.' .. name .. '")\n' ..
+            'local design = require("designed.' .. name .. '").new()\n' ..
             "design.window:show()\n")
     end)
     if not ok then return nil, tostring(err) end
     return dir
 end
 
---- A design name is a module name, so it has to be a Lua identifier.
+-- Modules Limer itself writes into scripts/designed/. A design with one of
+-- these names would overwrite it on Generate -- and be overwritten back.
+Files.RESERVED = { images = true }
+
+--- A design name is a module name, so it has to be a Lua identifier, and
+--- not one Limer generates itself. Returns true, or false and why.
 function Files.validName(name)
-    return type(name) == "string" and name:match("^[%a_][%w_]*$") ~= nil
+    if type(name) ~= "string" or not name:match("^[%a_][%w_]*$") then
+        return false, "a design name must be a Lua identifier: letters, digits, underscores"
+    end
+    if Files.RESERVED[name] then
+        return false, ("%q is reserved: Limer generates scripts/designed/%s.lua itself"):format(name, name)
+    end
+    return true
 end
 
 return Files

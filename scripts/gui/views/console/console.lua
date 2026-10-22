@@ -13,19 +13,45 @@
 -- reliable to three times in ten. Keep the widget count here low.
 
 local ui = require("limekit.ui")
+local Theme = require "app.core.theme"
 
 local Console = {}
 
-local COLOURS = {
-    idle    = "#7a7a7a",
-    running = "#2d7d46",
-    error   = "#c0392b",
-    warn    = "#b8860b",
-    stream  = "#1f6feb",
-    quiet   = "#8a8a8a",
+-- One set of colours per theme: the light set was picked against white and
+-- reads poorly on the dark background, and the other way round. A plain
+-- line has no colour of its own at all -- it takes the console's text
+-- colour, which the theme sets. (It used to say `color:inherit`, which Qt's
+-- rich text does not know, so it stored an explicit black: plain lines
+-- were black on black in the dark theme.)
+local PALETTES = {
+    light = {
+        idle    = "#6b7280",
+        running = "#2d7d46",
+        error   = "#c0392b",
+        warn    = "#9a6c00",
+        stream  = "#1f6feb",
+        quiet   = "#7a7a7a",
+    },
+    dark = {
+        idle    = "#9ca3af",
+        running = "#4ade80",
+        error   = "#f87171",
+        warn    = "#fbbf24",
+        stream  = "#60a5fa",
+        quiet   = "#8b949e",
+    },
 }
 
+local function colour(kind)
+    local palette = PALETTES[Theme.active] or PALETTES.light
+    return palette[kind] or palette.idle
+end
+
 local MAX_REPEATS_HIDDEN = 200
+
+-- Lines kept to be drawn again in the other theme's colours. The log
+-- itself holds more; past this, a theme switch keeps only the most recent.
+local MAX_KEPT_LINES = 3000
 
 local function escape(text)
     -- The log renders HTML, so output from a child process is neutralised
@@ -48,6 +74,10 @@ function Console.create()
     }
 
     local lastKey, repeats = nil, 0
+    -- Every line as what it is -- { kind, prefix, text } -- rather than as
+    -- the HTML it became, so it can be drawn again in other colours.
+    local kept = {}
+    local statusKind = "idle"
 
     local function initUI()
         self.logConsole:setReadOnly(true)
@@ -61,9 +91,29 @@ function Console.create()
         self.view:setLayout(consoleLayout)
     end
 
-    local function raw(html)
-        self.logConsole:appendText(html)
+    -- A line as HTML. "plain" carries no colour, so the console's own
+    -- text colour applies -- but it is still wrapped in a span: the console
+    -- only reads appended text as HTML when it sees a tag, and without one
+    -- the escaped ">>" showed as the literal "&gt;&gt;".
+    local function html(line)
+        local style = line.kind == "plain" and "" or (" style='color:" .. colour(line.kind) .. ";'")
+        return escape(line.prefix) .. "<span" .. style .. ">" .. escape(line.text) .. "</span>"
+    end
+
+    local function write(kind, prefix, text)
+        local line = { kind = kind, prefix = prefix, text = text }
+        kept[#kept + 1] = line
+        if #kept > MAX_KEPT_LINES then table.remove(kept, 1) end
+        self.logConsole:appendText(html(line))
         self.logConsole:scrollToEnd()
+    end
+
+    -- A theme switch: every kept line again, in the new theme's colours.
+    local function redraw()
+        self.logConsole:setText("")
+        for _, line in ipairs(kept) do self.logConsole:appendText(html(line)) end
+        self.logConsole:scrollToEnd()
+        self.statusLine:setTextColor(colour(statusKind))
     end
 
     -- A handler that fails on every click produced one identical block per
@@ -71,13 +121,12 @@ function Console.create()
     -- them says the same thing in one.
     local function flushRepeats()
         if repeats > 0 then
-            raw("<span style='color:" .. COLOURS.quiet .. ";'>   (repeated " ..
-                (repeats + 1) .. " times)</span>")
+            write("quiet", "   ", "(repeated " .. (repeats + 1) .. " times)")
         end
         lastKey, repeats = nil, 0
     end
 
-    local function emit(colour, prefix, chunk)
+    local function emit(kind, prefix, chunk)
         local text = tostring(chunk):gsub("^%s+", ""):gsub("%s+$", "")
         if text == "" then return end          -- never a bare prompt on its own
 
@@ -97,11 +146,9 @@ function Console.create()
         for line in (text .. "\n"):gmatch("(.-)\n") do
             if line ~= "" then
                 if isDetail(line) then
-                    raw("<span style='color:" .. COLOURS.quiet .. ";'>   " ..
-                        escape(line:gsub("^%s+", "")) .. "</span>")
+                    write("quiet", "   ", (line:gsub("^%s+", "")))
                 else
-                    raw((first and prefix or "   ") ..
-                        "<span style='color:" .. colour .. ";'>" .. escape(line) .. "</span>")
+                    write(kind, first and prefix or "   ", line)
                     first = false
                 end
             end
@@ -109,37 +156,39 @@ function Console.create()
     end
 
     initUI()
+    Theme.observe(redraw)
 
     local api = {
         view = self.view,
 
         log = function(message)
-            emit("inherit", ">> ", message)
+            emit("plain", ">> ", message)
         end,
 
         -- Output from the project itself, shown as it arrives rather than
         -- collected up and dumped when the process ends.
         logstream = function(message)
-            emit(COLOURS.stream, "", message)
+            emit("stream", "", message)
         end,
 
         error = function(message)
-            emit(COLOURS.error, ">> ", message)
+            emit("error", ">> ", message)
         end,
 
         warn = function(message)
-            emit(COLOURS.warn, ">> ", message)
+            emit("warn", ">> ", message)
         end,
 
         rule = function(title)
             flushRepeats()
-            raw("<span style='color:" .. COLOURS.quiet .. ";'>-- " .. escape(title) .. " " ..
-                string.rep("-", math.max(0, 54 - #tostring(title))) .. "</span>")
+            write("quiet", "", "-- " .. tostring(title) .. " " ..
+                string.rep("-", math.max(0, 54 - #tostring(title))))
         end,
 
         -- The live line. `kind` is one of idle, running, error, warn.
         status = function(kind, text, detail)
-            self.statusLine:setTextColor(COLOURS[kind] or COLOURS.idle)
+            statusKind = PALETTES.light[kind] and kind or "idle"
+            self.statusLine:setTextColor(colour(statusKind))
             self.statusLine:setText(
                 (kind == "running" and "* " or "  ") ..
                 tostring(text or "") ..
@@ -148,6 +197,7 @@ function Console.create()
 
         clear = function()
             lastKey, repeats = nil, 0
+            kept = {}
             self.logConsole:setText("")
         end,
 

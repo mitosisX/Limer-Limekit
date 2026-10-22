@@ -19,7 +19,11 @@ Canvas.__index = Canvas
 --- onImage(node, slot, key) when an image is dragged onto a widget --
 --- slot is "window icon" for the root.
 function Canvas.new(surface, onDrop, onSelect, onImage)
-    local self = setmetatable({ surface = surface, widgetOf = {}, nodeOf = {} }, Canvas)
+    -- formLabels: the label a form row shows, built here as a ui.Label rather
+    -- than left for Qt to make, so it can be hovered, clicked and renamed.
+    -- It stands for the field it labels -- clicking it selects the field,
+    -- dragging it moves the field -- but is not that field's widget.
+    local self = setmetatable({ surface = surface, widgetOf = {}, nodeOf = {}, formLabels = {} }, Canvas)
 
     surface:setOnImageDrop(function(widget, relPath)
         local node = self.nodeOf[widget]
@@ -30,7 +34,7 @@ function Canvas.new(surface, onDrop, onSelect, onImage)
     end)
 
     surface:setOnSelect(function(widget)
-        onSelect(widget and self.nodeOf[widget] or nil)
+        onSelect(self:nodeFor(widget))
     end)
 
     surface:setOnDrop(function(drop)
@@ -40,7 +44,7 @@ function Canvas.new(surface, onDrop, onSelect, onImage)
         if drop.kind == "class" then
             onDrop({ kind = "class", class = drop.class, target = target, slot = slot })
         else
-            local node = self.nodeOf[drop.widget]
+            local node = self:nodeFor(drop.widget)
             if node then
                 onDrop({ kind = "move", node = node, target = target, slot = slot })
             end
@@ -112,6 +116,15 @@ function Canvas:build(node)
         local path = Images.path(key)
         if path then Canvas.apply(widget, slot, path) end
     end
+    -- A Table's cells, once the props above have given it its rows and
+    -- columns -- in the same order the generated code sets them.
+    if ok then
+        for r, row in ipairs(node.cells or {}) do
+            for c, text in ipairs(row) do
+                if text ~= "" then pcall(function() widget:setCellText(r, c, text) end) end
+            end
+        end
+    end
     self.widgetOf[node], self.nodeOf[widget] = widget, node
 
     if ok and DesignModel.isContainer(node) and not DesignModel.hasLayout(node) then
@@ -143,7 +156,10 @@ function Canvas:build(node)
                 local g = child.grid
                 layout:addChild(self:build(child), g.row, g.column, g.rowSpan or 1, g.columnSpan or 1)
             elseif kind == "form" then
-                layout:addChild(child.form.label or "", self:build(child))
+                local field = self:build(child)
+                local title = ui.Label((child.form or {}).label or "")
+                self.formLabels[title] = child
+                layout:addChild(title, field)
             else
                 layout:addChild(self:build(child), child.stretch or 0)
             end
@@ -160,13 +176,16 @@ function Canvas:build(node)
 end
 
 function Canvas:rebuild(design)
-    self.widgetOf, self.nodeOf = {}, {}
+    self.widgetOf, self.nodeOf, self.formLabels = {}, {}, {}
     self.root = design.root
     local root = self:build(design.root)
     root:setFixedSize(design.window.width, design.window.height)
     -- Labels go on after setDesignChild, which forgets the old design's.
     self.surface:setDesignChild(root)
     for widget, node in pairs(self.nodeOf) do self:label(widget, node) end
+    for title, node in pairs(self.formLabels) do
+        self.surface:setWidgetLabel(title, node.name .. " · label")
+    end
     -- Every widget built above is new and therefore still interactive; the
     -- surface has to be told before the next click reaches one of them.
     self.surface:refresh()
@@ -180,6 +199,7 @@ function Canvas:label(widget, node)
         local word = DesignModel.LAYOUT_WORDS[node.layout] or kind
         kind = word:sub(1, 1):upper() .. word:sub(2)
     end
+    if node.locked then kind = kind .. " · locked" end
     self.surface:setWidgetLabel(widget, node.name .. " · " .. kind)
     -- Where an image dragged from the images manager can land: the
     -- widget's first image slot, or for the root, the window's icon.
@@ -189,7 +209,18 @@ function Canvas:label(widget, node)
 end
 
 function Canvas:widgetFor(node) return node and self.widgetOf[node] or nil end
-function Canvas:nodeFor(widget) return widget and self.nodeOf[widget] or nil end
+
+--- The node a widget on the canvas stands for. A form row's label stands
+--- for the field it labels.
+function Canvas:nodeFor(widget)
+    if not widget then return nil end
+    return self.nodeOf[widget] or self.formLabels[widget]
+end
+
+--- True if the widget is a form row's label rather than a widget of its own.
+function Canvas:isFormLabel(widget)
+    return widget ~= nil and self.formLabels[widget] ~= nil
+end
 
 function Canvas:select(node)
     self.surface:setSelected(node and self.widgetOf[node] or nil)

@@ -36,6 +36,9 @@
 --   ui.Splitter  layout = "splitter"  children are panes, any widget
 --   ui.Scroller  layout = "scroller"  one child, any widget
 --
+-- Two more fields a node may carry: `cells`, the text in a Table's cells
+-- (see TABLE CONTENTS), and `locked`, which keeps it where it is.
+--
 -- Every mutating function returns true, or false and a reason, and never
 -- half-applies: a refused change leaves the design as it was.
 
@@ -179,6 +182,36 @@ local function descends(node, ancestor)
     return false
 end
 
+-- LOCKING -------------------------------------------------------------------
+
+-- A locked node stays where it is: it can still be selected and its
+-- properties edited, but it is not moved, wrapped, unwrapped or deleted
+-- until it is unlocked. Locking is the designer's own business; nothing
+-- about it reaches the generated code.
+
+local function lockedReason(node)
+    return (node.name or node.kind or "it") .. " is locked -- unlock it first"
+end
+
+--- The first locked node in a subtree, the node itself included; nil if
+--- none is. Deleting a container would take its locked children with it.
+function DesignModel.lockedWithin(node)
+    if node.locked then return node end
+    for _, child in ipairs(node.children or {}) do
+        local found = DesignModel.lockedWithin(child)
+        if found then return found end
+    end
+    return nil
+end
+
+function DesignModel.setLocked(design, node, locked)
+    if node == design.root then return false, "the root stays put already" end
+    if not DesignModel.parentOf(design, node) then return false, "not in the design" end
+    -- Absent rather than false, so an unlocked node saves as it always did.
+    node.locked = locked and true or nil
+    return true
+end
+
 -- NAMES ---------------------------------------------------------------------
 
 local function usedNames(design)
@@ -310,6 +343,7 @@ end
 --- Moves a node that is in the design to a container and slot.
 function DesignModel.move(design, node, parent, slot)
     if node == design.root then return false, "the root stays put" end
+    if node.locked then return false, lockedReason(node) end
     if not DesignModel.isContainer(parent) then return false, "not a container" end
     if descends(parent, node) then return false, "a widget cannot be moved inside itself" end
     local oldParent = DesignModel.parentOf(design, node)
@@ -335,28 +369,63 @@ end
 
 function DesignModel.remove(design, node)
     if node == design.root then return false, "the root cannot be removed" end
+    local held = DesignModel.lockedWithin(node)
+    if held then return false, lockedReason(held) end
     local parent = DesignModel.parentOf(design, node)
     if not parent then return false, "not in the design" end
     table.remove(parent.children, DesignModel.indexOf(parent, node))
     return true
 end
 
---- Replaces a node with a new container holding it. Returns the container.
-function DesignModel.wrap(design, node, layout)
+-- What a widget can be wrapped in, in the order it is offered: a Container
+-- laid out each of the four ways, then the widgets that hold children
+-- their own way (a GroupBox through a layout of its own).
+DesignModel.WRAPPERS = {
+    "ui.HLayout", "ui.VLayout", "ui.GridLayout", "ui.FormLayout",
+    "ui.GroupBox", "ui.Scroller", "ui.Splitter", "ui.Tab",
+}
+
+-- An empty, named node to wrap with: a layout class makes a Container laid
+-- out that way, a holder class makes that widget.
+local function wrapperFor(design, how)
+    if type(how) == "string" and how:match("^ui%.") and KINDS[how] then
+        local box = DesignModel.container(how)
+        box.name = DesignModel.nameFor(design, "ui.Container")
+        return box
+    end
+    if HOLDERS[how] or LAYOUT_HOLDERS[how] then
+        local box = DesignModel.node(how)
+        box.name = DesignModel.nameFor(design, how)
+        return box
+    end
+    return nil, "cannot wrap in " .. tostring(how)
+end
+
+--- Replaces a node with a new container holding it, and returns the
+--- container. `how` is a layout class ("ui.HLayout" -- a Container laid out
+--- that way) or a holder class ("ui.GroupBox", "ui.Tab", ...); see
+--- DesignModel.WRAPPERS.
+function DesignModel.wrap(design, node, how)
     if node == design.root then return nil, "the root cannot be wrapped" end
     if DesignModel.isPseudo(node) then return nil, "only a widget can be wrapped" end
+    if node.locked then return nil, lockedReason(node) end
     local parent = DesignModel.parentOf(design, node)
     if not parent then return nil, "not in the design" end
+    local box, why = wrapperFor(design, how)
+    if not box then return nil, why end
 
-    local box = DesignModel.container(layout)
-    box.name = DesignModel.nameFor(design, "ui.Container")
-    -- The box takes the node's place and placement; the node starts fresh
-    -- inside the box.
-    box.grid, box.form, box.stretch = node.grid, node.form, node.stretch
-    parent.children[DesignModel.indexOf(parent, node)] = box
+    -- The box takes the node's place and placement -- a page's tab title
+    -- included -- and the node starts fresh inside the box.
+    box.grid, box.form, box.stretch, box.tab = node.grid, node.form, node.stretch, node.tab
     clearPlacement(node)
-    node.stretch = 0
-    box.children[1] = node
+    -- A Tab holds pages, so a plain widget gets a page made around it.
+    -- That happens while the node is still in the design, so the page's
+    -- name cannot clash with anything in it.
+    local inner = asPage(design, box, node)
+    local index, reason = place(box, inner, {})
+    if not index then return nil, reason end
+    box.children[index] = inner
+    parent.children[DesignModel.indexOf(parent, node)] = box
     return box
 end
 
@@ -364,6 +433,7 @@ end
 --- place to that widget.
 function DesignModel.unwrap(design, box)
     if box == design.root then return false, "the root cannot be unwrapped" end
+    if box.locked then return false, lockedReason(box) end
     if not DesignModel.isContainer(box) or #box.children ~= 1 then
         return false, "only a container holding exactly one widget can be unwrapped"
     end
@@ -371,9 +441,38 @@ function DesignModel.unwrap(design, box)
     if DesignModel.isPseudo(child) then return false, "nothing to keep" end
     local parent = DesignModel.parentOf(design, box)
     if not parent then return false, "not in the design" end
+    if KINDS[parent.layout] == "tab" and not DesignModel.isContainer(child) then
+        return false, "a tab holds pages, and " .. child.name .. " is not one"
+    end
 
-    child.grid, child.form, child.stretch = box.grid, box.form, box.stretch
+    clearPlacement(child)
+    child.grid, child.form, child.stretch, child.tab = box.grid, box.form, box.stretch, box.tab
     parent.children[DesignModel.indexOf(parent, box)] = child
+    return true
+end
+
+--- Moves a node to the start ("first") or the end ("last") of the
+--- container it is in. Laid out, siblings never overlap, so this is what
+--- bring-to-front and send-to-back come to: first and last in the order
+--- they are laid out in.
+function DesignModel.reorder(design, node, where)
+    if where ~= "first" and where ~= "last" then
+        return false, "reorder to 'first' or 'last', not " .. tostring(where)
+    end
+    if node == design.root then return false, "the root stays put" end
+    if node.locked then return false, lockedReason(node) end
+    local parent = DesignModel.parentOf(design, node)
+    if not parent then return false, "not in the design" end
+    if KINDS[parent.layout] == "grid" then
+        return false, "in a grid, edit row and column instead"
+    end
+    local index = DesignModel.indexOf(parent, node)
+    local target = where == "first" and 1 or #parent.children
+    if index == target then
+        return false, "already at the " .. (where == "first" and "start" or "end")
+    end
+    table.remove(parent.children, index)
+    table.insert(parent.children, target, node)
     return true
 end
 
@@ -415,6 +514,74 @@ function DesignModel.setLayout(design, box, layout)
             child.stretch = 0
         end
     end
+    return true
+end
+
+-- TABLE CONTENTS ------------------------------------------------------------
+
+-- A Table's column titles and row count are ordinary setter props --
+-- columnHeaders, rowCount, or columnCount when no column has a title --
+-- but the text in its cells is not: the Table sets one cell at a time.
+-- So the cells live beside the props, as rows of strings, every row as
+-- wide as the table:
+--   node.cells = { { "Ada", "1815" }, { "Grace", "1906" } }
+-- and generate as setCellText(row, column, text), once per filled cell.
+
+--- What a Table holds, ready to edit: { headers = { ... }, rows = { { ... } } },
+--- every row and the headers padded to the same width.
+function DesignModel.tableContents(node)
+    local props = node.props or {}
+    local headers = {}
+    if type(props.columnHeaders) == "table" then
+        for i, title in ipairs(props.columnHeaders) do headers[i] = tostring(title) end
+    end
+    local cells = node.cells or {}
+    local columns = math.max(#headers, math.tointeger(props.columnCount) or 0)
+    for _, row in ipairs(cells) do columns = math.max(columns, #row) end
+    local rowCount = math.max(math.tointeger(props.rowCount) or 0, #cells)
+
+    for c = #headers + 1, columns do headers[c] = "" end
+    local rows = {}
+    for r = 1, rowCount do
+        local row = {}
+        for c = 1, columns do row[c] = (cells[r] or {})[c] or "" end
+        rows[r] = row
+    end
+    return { headers = headers, rows = rows }
+end
+
+--- Sets what a Table holds from { headers, rows } (the shape tableContents
+--- returns). Titles become columnHeaders, or a bare columnCount when every
+--- title is blank; the row count follows the rows; and the cells are kept
+--- only when at least one of them has text.
+function DesignModel.setTableContents(node, contents)
+    local headers, rows = contents.headers or {}, contents.rows or {}
+    local columns = #headers
+    for _, row in ipairs(rows) do columns = math.max(columns, #row) end
+
+    local titles, titled = {}, false
+    for c = 1, columns do
+        titles[c] = tostring(headers[c] or "")
+        if titles[c] ~= "" then titled = true end
+    end
+    node.props.columnHeaders, node.props.columnCount = nil, nil
+    if titled then
+        node.props.columnHeaders = titles
+    elseif columns > 0 then
+        node.props.columnCount = columns
+    end
+    node.props.rowCount = #rows > 0 and #rows or nil
+
+    local cells, filled = {}, false
+    for r, row in ipairs(rows) do
+        cells[r] = {}
+        for c = 1, columns do
+            local text = tostring(row[c] or "")
+            cells[r][c] = text
+            if text ~= "" then filled = true end
+        end
+    end
+    node.cells = filled and cells or nil
     return true
 end
 
@@ -484,6 +651,19 @@ local function checkNode(node, path)
     if type(node.class) ~= "string" then return false, path .. " has no class" end
     if type(node.name) ~= "string" then return false, path .. " has no name" end
     node.props = node.props or {}
+    -- Cells are generated as text, so anything but rows of strings is refused
+    -- here rather than turning into nil in the generated code.
+    if node.cells ~= nil then
+        if type(node.cells) ~= "table" then return false, path .. ".cells is not a table" end
+        for r, row in ipairs(node.cells) do
+            if type(row) ~= "table" then return false, ("%s.cells[%d] is not a row"):format(path, r) end
+            for c, text in ipairs(row) do
+                if type(text) ~= "string" then
+                    return false, ("%s.cells[%d][%d] is not text"):format(path, r, c)
+                end
+            end
+        end
+    end
     if node.children then
         if not KINDS[node.layout] then
             return false, path .. " has an unknown layout " .. tostring(node.layout)
@@ -542,9 +722,11 @@ function DesignModel.paste(design, parent, source, slot)
     if DesignModel.isPseudo(node) then return nil, "nothing to paste" end
 
     -- Old names go first, or nameFor would count the fragment's own names
-    -- as taken -- they are not in the design yet.
+    -- as taken -- they are not in the design yet. A paste is new, so it
+    -- arrives unlocked, whatever it was copied from.
     local named = {}
     DesignModel.walk(node, function(n)
+        n.locked = nil
         if n.name then named[#named + 1] = n; n.name = nil end
     end)
     for _, n in ipairs(named) do n.name = DesignModel.nameFor(design, n.class) end
@@ -629,17 +811,47 @@ local function imageRef(key)
     return "images." .. key
 end
 
+-- Setters run in this order. Most props are independent and go
+-- alphabetically, but some define what a widget holds and others pick
+-- within it: setCurrentIndex(2) before setItems is clamped against an
+-- empty list and lost, and setValue(30) before setRange(10, 50) is clamped
+-- to the default range first. Content first, selection last.
+local PROP_RANK = {
+    items = 1, range = 1, minimum = 1, maximum = 1,
+    columnHeaders = 1, columnCount = 1, headerLabels = 1, rowCount = 1, checkable = 1,
+    currentIndex = 3, currentRow = 3, currentText = 3, value = 3, checked = 3,
+}
+
+local function propOrder(props)
+    local keys = sortedKeys(props)
+    table.sort(keys, function(a, b)
+        local ra, rb = PROP_RANK[a] or 2, PROP_RANK[b] or 2
+        if ra ~= rb then return ra < rb end
+        return a < b
+    end)
+    return keys
+end
+
 -- Every widget first, so that a layout can refer to any of them.
 local function emitWidgets(node, lines)
     if DesignModel.isPseudo(node) then return end
-    lines[#lines + 1] = ("M.%s = %s()"):format(node.name, node.class)
-    for _, key in ipairs(sortedKeys(node.props)) do
-        lines[#lines + 1] = ("M.%s:%s(%s)"):format(
+    lines[#lines + 1] = ("w.%s = %s()"):format(node.name, node.class)
+    for _, key in ipairs(propOrder(node.props)) do
+        lines[#lines + 1] = ("w.%s:%s(%s)"):format(
             node.name, setterName(key), callArgs(node.props[key]))
     end
     for _, slot in ipairs(sortedKeys(node.images)) do
-        lines[#lines + 1] = ("M.%s:%s(%s)"):format(
+        lines[#lines + 1] = ("w.%s:%s(%s)"):format(
             node.name, setterName(slot), imageRef(node.images[slot]))
+    end
+    -- A Table's cells, after the setters above have given it its rows and
+    -- columns. A blank cell is left alone rather than set to "".
+    for r, row in ipairs(node.cells or {}) do
+        for c, text in ipairs(row) do
+            if text ~= "" then
+                lines[#lines + 1] = ("w.%s:setCellText(%d, %d, %s)"):format(node.name, r, c, literal(text))
+            end
+        end
     end
     for _, child in ipairs(node.children or {}) do emitWidgets(child, lines) end
 end
@@ -669,12 +881,12 @@ local function emitLayouts(node, lines)
         if #node.children > 0 then lines[#lines + 1] = "" end
         for _, child in ipairs(node.children) do
             if kind == "tab" then
-                lines[#lines + 1] = ("M.%s:addTab(M.%s, %s)"):format(
+                lines[#lines + 1] = ("w.%s:addTab(w.%s, %s)"):format(
                     node.name, child.name, literal((child.tab or {}).title or ""))
             elseif kind == "splitter" then
-                lines[#lines + 1] = ("M.%s:addChild(M.%s)"):format(node.name, child.name)
+                lines[#lines + 1] = ("w.%s:addChild(w.%s)"):format(node.name, child.name)
             else
-                lines[#lines + 1] = ("M.%s:setChild(M.%s)"):format(node.name, child.name)
+                lines[#lines + 1] = ("w.%s:setChild(w.%s)"):format(node.name, child.name)
             end
         end
         return
@@ -690,22 +902,23 @@ local function emitLayouts(node, lines)
             lines[#lines + 1] = ("%s:addSpacing(%d)"):format(L, child.size or 0)
         elseif kind == "grid" then
             local g = child.grid or { row = 1, column = 1 }
-            lines[#lines + 1] = ("%s:addChild(M.%s, %d, %d, %d, %d)"):format(
+            lines[#lines + 1] = ("%s:addChild(w.%s, %d, %d, %d, %d)"):format(
                 L, child.name, g.row, g.column, g.rowSpan or 1, g.columnSpan or 1)
         elseif kind == "form" then
-            lines[#lines + 1] = ("%s:addChild(%s, M.%s)"):format(
+            lines[#lines + 1] = ("%s:addChild(%s, w.%s)"):format(
                 L, literal((child.form or {}).label or ""), child.name)
         elseif (child.stretch or 0) > 0 then
-            lines[#lines + 1] = ("%s:addChild(M.%s, %d)"):format(L, child.name, child.stretch)
+            lines[#lines + 1] = ("%s:addChild(w.%s, %d)"):format(L, child.name, child.stretch)
         else
-            lines[#lines + 1] = ("%s:addChild(M.%s)"):format(L, child.name)
+            lines[#lines + 1] = ("%s:addChild(w.%s)"):format(L, child.name)
         end
     end
-    lines[#lines + 1] = ("M.%s:setLayout(%s)"):format(node.name, L)
+    lines[#lines + 1] = ("w.%s:setLayout(%s)"):format(node.name, L)
 end
 
---- The design as a Lua module returning its window and every widget by
---- name, so main.lua can `require` it and wire handlers on.
+--- The design as a Lua module whose new() builds a fresh window and
+--- returns it with every widget by name, so main.lua can `require` it,
+--- call new() -- as often as it likes -- and wire handlers on.
 function DesignModel.generate(design, moduleName)
     moduleName = moduleName or "main"
     local lines = {
@@ -720,17 +933,28 @@ function DesignModel.generate(design, moduleName)
     lines[#lines + 1] = ""
     lines[#lines + 1] = "local M = {}"
     lines[#lines + 1] = ""
-    emitWidgets(design.root, lines)
-    emitLayouts(design.root, lines)
+    -- A factory, not widgets built at require time: require caches the
+    -- module, so widgets made on load would be one window for the whole
+    -- app, and a designed dialog closed once could never be opened again.
+    lines[#lines + 1] = "--- A fresh window and every widget in it, by name."
+    lines[#lines + 1] = "function M.new()"
+    local body = { "local w = {}", "" }
+    emitWidgets(design.root, body)
+    emitLayouts(design.root, body)
 
-    local w = design.window
-    lines[#lines + 1] = ""
-    lines[#lines + 1] = ("M.window = ui.Window { title = %s }"):format(literal(w.title or "My App"))
-    lines[#lines + 1] = ("M.window:setSize(%d, %d)"):format(w.width or 640, w.height or 480)
-    if w.icon then
-        lines[#lines + 1] = ("M.window:setIcon(%s)"):format(imageRef(w.icon))
+    local win = design.window
+    body[#body + 1] = ""
+    body[#body + 1] = ("w.window = ui.Window { title = %s }"):format(literal(win.title or "My App"))
+    body[#body + 1] = ("w.window:setSize(%d, %d)"):format(win.width or 640, win.height or 480)
+    if win.icon then
+        body[#body + 1] = ("w.window:setIcon(%s)"):format(imageRef(win.icon))
     end
-    lines[#lines + 1] = ("M.window:setMainChild(M.%s)"):format(design.root.name)
+    body[#body + 1] = ("w.window:setMainChild(w.%s)"):format(design.root.name)
+    body[#body + 1] = "return w"
+    for _, line in ipairs(body) do
+        lines[#lines + 1] = line == "" and "" or "    " .. line
+    end
+    lines[#lines + 1] = "end"
     lines[#lines + 1] = ""
     lines[#lines + 1] = "return M"
     lines[#lines + 1] = ""

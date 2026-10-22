@@ -32,6 +32,9 @@ local Properties = require "gui.views.designer.properties"
 local Preview = require "gui.views.designer.preview"
 local Files = require "gui.views.designer.files"
 local Icons = require "gui.views.designer.icons"
+local Catalog = require "gui.views.designer.catalog"
+local ListEditor = require "gui.modals.list_editor"
+local TableEditor = require "gui.modals.table_editor"
 local Theme = require "app.core.theme"
 local Images = require "app.core.images"
 
@@ -103,21 +106,29 @@ local function updateActions()
     local node = S.selected
     local isRoot = node ~= nil and node == S.design.root
     local isWidget = node ~= nil and not node.kind and not isRoot
+    local locked = node ~= nil and node.locked == true
+    -- Deleting takes everything inside with it, so one lock inside stops it.
+    local removable = node ~= nil and not isRoot and DesignModel.lockedWithin(node) == nil
+    local movable = node ~= nil and not isRoot and not locked
     local A = S.actions
     A.undo:setEnabled(S.undo:canUndo())
     A.redo:setEnabled(S.undo:canRedo())
     S.undoButton:setEnabled(S.undo:canUndo())
     S.redoButton:setEnabled(S.undo:canRedo())
-    for _, key in ipairs({ "cut", "copy", "duplicate", "wrapRow", "wrapColumn" }) do
-        A[key]:setEnabled(isWidget)
+    A.copy:setEnabled(isWidget)
+    A.duplicate:setEnabled(isWidget)
+    A.cut:setEnabled(isWidget and removable)
+    for _, entry in ipairs(A.wraps) do entry:setEnabled(isWidget and not locked) end
+    A.delete:setEnabled(removable)
+    S.deleteButton:setEnabled(removable)
+    S.wrapRowButton:setEnabled(isWidget and not locked)
+    S.wrapColumnButton:setEnabled(isWidget and not locked)
+    A.unwrap:setEnabled(DesignModel.isContainer(node) and not isRoot and not locked and #node.children == 1)
+    for _, key in ipairs({ "moveUp", "moveDown", "moveFirst", "moveLast" }) do
+        A[key]:setEnabled(movable)
     end
-    A.delete:setEnabled(node ~= nil and not isRoot)
-    S.deleteButton:setEnabled(node ~= nil and not isRoot)
-    S.wrapRowButton:setEnabled(isWidget)
-    S.wrapColumnButton:setEnabled(isWidget)
-    A.unwrap:setEnabled(DesignModel.isContainer(node) and not isRoot and #node.children == 1)
-    A.moveUp:setEnabled(node ~= nil and not isRoot)
-    A.moveDown:setEnabled(node ~= nil and not isRoot)
+    A.lock:setEnabled(node ~= nil and not isRoot)
+    A.lock:setChecked(locked)
     A.addPage:setEnabled(node ~= nil and node.layout == "tab")
     for _, item in ipairs(A.layouts) do item:setEnabled(DesignModel.hasLayout(node)) end
 end
@@ -286,14 +297,54 @@ local function moveSelected(delta)
     end, delta < 0 and "moved up" or "moved down")
 end
 
-local function wrapSelected(layout)
+-- What "Wrap in" calls each of DesignModel.WRAPPERS, and where its menus
+-- draw the line between the layouts and the widgets that hold children.
+local WRAP_LABELS = {
+    ["ui.HLayout"] = "Row", ["ui.VLayout"] = "Column",
+    ["ui.GridLayout"] = "Grid", ["ui.FormLayout"] = "Form",
+    ["ui.GroupBox"] = "Group box", ["ui.Scroller"] = "Scroller",
+    ["ui.Splitter"] = "Splitter", ["ui.Tab"] = "Tab",
+}
+local FIRST_HOLDER = "ui.GroupBox"
+
+--- Wraps the selection in a new container: `how` is a layout class (a
+--- Container laid out that way) or a holder class; see DesignModel.WRAPPERS.
+local function wrapSelected(how)
     if not S.selected then setStatus("select a widget to wrap"); return end
     mutate(function(d, selected)
         if not selected then return false, "nothing selected" end
-        local box, why = DesignModel.wrap(d, selected, layout)
+        local box, why = DesignModel.wrap(d, selected, how)
         if not box then return false, why end
         return true, nil, pathOf(d, box)
-    end, "wrapped in a " .. (layout == "ui.HLayout" and "row" or "column"))
+    end, "wrapped in a " .. (WRAP_LABELS[how] or short(how)):lower())
+end
+
+--- First or last in its container: what bring-to-front and send-to-back
+--- mean where widgets are laid out rather than stacked.
+local function reorderSelected(where)
+    if not S.selected then return end
+    mutate(function(d, selected)
+        if not selected then return false, "nothing selected" end
+        local ok, why = DesignModel.reorder(d, selected, where)
+        if not ok then return false, why end
+        return true, nil, pathOf(d, selected)
+    end, where == "first" and "moved to the start" or "moved to the end")
+end
+
+local function setLocked(node, locked)
+    if not node then setStatus("nothing selected"); return end
+    local path = pathOf(S.design, node)
+    mutate(function(d)
+        local n = nodeAt(d, path)
+        if not n then return false, "gone" end
+        return DesignModel.setLocked(d, n, locked)
+    end, node.name and (node.name .. (locked and " locked" or " unlocked"))
+        or (locked and "locked" or "unlocked"))
+end
+
+local function toggleLock()
+    local node = S.selected
+    setLocked(node, not (node and node.locked))
 end
 
 local function unwrapSelected()
@@ -368,6 +419,35 @@ function callbacks.onProp(node, name, value)
         or (node.name .. "." .. name .. " = " .. (type(value) == "table" and "{...}" or tostring(value))))
 end
 
+function callbacks.onLock(node, locked) setLocked(node, locked) end
+
+-- The editors block until closed, and only then is the design changed --
+-- through mutate, so an edit made in one is a single step to undo.
+
+--- Opens the list editor on one of a node's list props (items, headerLabels).
+function callbacks.editList(node, name)
+    local current = (node.props or {})[name]
+    local edited = ListEditor.open(S.window, node.name .. "." .. name,
+                                   type(current) == "table" and current or {})
+    if edited == nil then setStatus("no change"); return end
+    -- An emptied list is "not set", the same as clearing a typed value.
+    callbacks.onProp(node, name, #edited > 0 and edited or nil)
+end
+
+--- Opens the table editor on a Table's titles, rows and cells.
+function callbacks.editTable(node)
+    local edited = TableEditor.open(S.window, node.name .. " contents", DesignModel.tableContents(node))
+    if edited == nil then setStatus("no change"); return end
+    local path = pathOf(S.design, node)
+    mutate(function(d)
+        local n = nodeAt(d, path)
+        if not n then return false, "gone" end
+        return DesignModel.setTableContents(n, edited)
+    end, ("%s: %d %s, %d %s"):format(node.name,
+        #edited.headers, #edited.headers == 1 and "column" or "columns",
+        #edited.rows, #edited.rows == 1 and "row" or "rows"))
+end
+
 function callbacks.onRename(node, name)
     local path = pathOf(S.design, node)
     mutate(function(d)
@@ -410,8 +490,16 @@ end
 --- A handle drag sets a minimum size: inside a layout, that is the size
 --- control that means something, and it is what the generated code sets.
 function callbacks.onResize(widget, width, height)
+    -- A form label stands for its field; its size is not the field's.
+    if S.canvas:isFormLabel(widget) then refreshAll(); return end
     local node = S.canvas:nodeFor(widget)
     if not node or node.kind then return end
+    if node.locked then
+        -- Rebuilt from the model, so nothing the handle drew is left behind.
+        refreshAll()
+        setStatus(node.name .. " is locked -- unlock it to resize it")
+        return
+    end
     local path = pathOf(S.design, node)
     mutate(function(d)
         local n = nodeAt(d, path)
@@ -428,6 +516,16 @@ function callbacks.onDoubleClick(widget)
     local node = S.canvas:nodeFor(widget)
     if not node or node.kind then return end
     select(node)
+    -- A form row's label: what there is to edit is the label itself.
+    if S.canvas:isFormLabel(widget) and node.form then
+        local text = ui.Dialogs.textInput(S.window, node.name, "Label:", node.form.label or "")
+        if text ~= nil then callbacks.onPlacement(node, "form.label", text) end
+        return
+    end
+    -- What a Table or a list widget holds is what there is to edit on it.
+    if node.class == "ui.Table" and not node.buildError then return callbacks.editTable(node) end
+    local list = Catalog.listProp(node.class)
+    if list and not node.buildError then return callbacks.editList(node, list) end
     local ok, props = pcall(sys.Introspect.properties, widget)
     if not ok then return end
     local byName = {}
@@ -601,8 +699,9 @@ local function askName()
     local name = ui.Dialogs.textInput(S.window, "Save design as",
         "Name (becomes scripts/designed/<name>.lua):", S.name)
     if name == nil or name == "" then return nil end
-    if not Files.validName(name) then
-        warn("a design name must be a Lua identifier: letters, digits, underscores")
+    local valid, why = Files.validName(name)
+    if not valid then
+        warn(why)
         return nil
     end
     return name
@@ -639,7 +738,7 @@ local function generate()
     ui.Dialogs.info(S.window, "Generated",
         "Written to scripts/designed/" .. S.name .. ".lua.\n\n" ..
         "In main.lua:\n\n" ..
-        "    local " .. S.name .. " = require(\"designed." .. S.name .. "\")\n" ..
+        "    local " .. S.name .. " = require(\"designed." .. S.name .. "\").new()\n" ..
         "    " .. S.name .. ".window:show()\n\n" ..
         "Every widget is there by name, so handlers go on in main.lua:\n\n" ..
         "    " .. S.name .. ".button1:setOnClick(function() ... end)\n\n" ..
@@ -690,19 +789,35 @@ local function item(menu, label, handler, enabled)
     return entry
 end
 
+--- The "Wrap in" submenu: every one of DesignModel.WRAPPERS, the layouts
+--- first. Its entries are added to `entries`, if given, so the menubar's
+--- can follow the selection.
+local function wrapMenu(enabled, entries)
+    local menu = ui.Menu("Wrap in")
+    for _, how in ipairs(DesignModel.WRAPPERS) do
+        if how == FIRST_HOLDER then menu:addSeparator() end
+        local entry = item(menu, WRAP_LABELS[how] or short(how), function() wrapSelected(how) end, enabled)
+        if entries then entries[#entries + 1] = entry end
+    end
+    return menu
+end
+
 local function buildContextMenu()
     local node = S.selected
     local menu = ui.Menu("")
-    local isWidget = node and not node.kind
-    local isBox = node and DesignModel.isContainer(node)
+    -- Booleans, never nil: item() takes nil to mean "always enabled".
+    local isWidget = node ~= nil and not node.kind
+    local isBox = node ~= nil and DesignModel.isContainer(node)
     local isRoot = node == S.design.root
+    local locked = node ~= nil and node.locked == true
+    local removable = node ~= nil and not isRoot and DesignModel.lockedWithin(node) == nil
+    local movable = node ~= nil and not isRoot and not locked
 
-    item(menu, "Wrap in a row", function() wrapSelected("ui.HLayout") end, isWidget and not isRoot)
-    item(menu, "Wrap in a column", function() wrapSelected("ui.VLayout") end, isWidget and not isRoot)
-    item(menu, "Unwrap", unwrapSelected, isBox and not isRoot and #node.children == 1)
+    menu:addMenu(wrapMenu(isWidget and not isRoot and not locked))
+    item(menu, "Unwrap", unwrapSelected, isBox and not isRoot and not locked and #node.children == 1)
     item(menu, "Add page", addPage, node ~= nil and node.layout == "tab")
     menu:addSeparator()
-    item(menu, "Cut", cutSelected, isWidget and not isRoot)
+    item(menu, "Cut", cutSelected, isWidget and removable)
     item(menu, "Copy", copySelected, isWidget and not isRoot)
     item(menu, "Paste", pasteClipboard)
     item(menu, "Duplicate", duplicateSelected, isWidget and not isRoot)
@@ -716,9 +831,13 @@ local function buildContextMenu()
     item(menu, "Add stretch", function() addPseudo(DesignModel.stretch, "stretch") end)
     item(menu, "Add spacing", function() addPseudo(function() return DesignModel.spacing(12) end, "spacing") end)
     menu:addSeparator()
-    item(menu, "Move up", function() moveSelected(-1) end, node ~= nil and not isRoot)
-    item(menu, "Move down", function() moveSelected(1) end, node ~= nil and not isRoot)
-    item(menu, "Delete", deleteSelected, node ~= nil and not isRoot)
+    item(menu, "Move up", function() moveSelected(-1) end, movable)
+    item(menu, "Move down", function() moveSelected(1) end, movable)
+    item(menu, "Move to start", function() reorderSelected("first") end, movable)
+    item(menu, "Move to end", function() reorderSelected("last") end, movable)
+    menu:addSeparator()
+    item(menu, locked and "Unlock" or "Lock", toggleLock, node ~= nil and not isRoot)
+    item(menu, "Delete", deleteSelected, removable)
     return menu
 end
 
@@ -779,7 +898,7 @@ end
 -- would remove a widget from the design. Delete is bound to the canvas and
 -- the outline instead (installShortcuts), and only shown here.
 local function buildMenubar()
-    S.actions = { layouts = {} }
+    S.actions = { layouts = {}, wraps = {} }
     local menubar = ui.Menubar()
 
     local function menu(title, entries)
@@ -831,9 +950,12 @@ local function buildMenubar()
         "-",
         { "Delete\tDel", deleteSelected, icon = "delete", key = "delete" },
     })
+    -- Ctrl+Shift+Up and Down go all the way, where Ctrl+Up and Down go one
+    -- place. Ctrl+Home and End were the other candidates, but a shortcut on
+    -- the window would take them from the outline and the Properties table,
+    -- which use them to jump to their first and last rows.
     menu("Arrange", {
-        { "Wrap in a row", function() wrapSelected("ui.HLayout") end, icon = "row", key = "wrapRow" },
-        { "Wrap in a column", function() wrapSelected("ui.VLayout") end, icon = "column", key = "wrapColumn" },
+        { submenu = wrapMenu(nil, S.actions.wraps) },
         { "Unwrap", unwrapSelected, key = "unwrap" },
         { submenu = layouts },
         "-",
@@ -843,6 +965,10 @@ local function buildMenubar()
         "-",
         { "Move up", function() moveSelected(-1) end, shortcut = "Ctrl+Up", key = "moveUp" },
         { "Move down", function() moveSelected(1) end, shortcut = "Ctrl+Down", key = "moveDown" },
+        { "Move to start", function() reorderSelected("first") end, shortcut = "Ctrl+Shift+Up", key = "moveFirst" },
+        { "Move to end", function() reorderSelected("last") end, shortcut = "Ctrl+Shift+Down", key = "moveLast" },
+        "-",
+        { "Lock", toggleLock, shortcut = "Ctrl+L", icon = "lock", checkable = true, key = "lock" },
     })
     menu("View", {
         { "Generated code", toggleCode, shortcut = "Ctrl+Shift+C", icon = "code", checkable = true, key = "code" },
@@ -1104,6 +1230,10 @@ function DesignerView.create()
         deleteSelected = deleteSelected,
         moveSelected = moveSelected,
         wrapSelected = wrapSelected,
+        reorderSelected = reorderSelected,
+        toggleLock = toggleLock,
+        editList = callbacks.editList,
+        editTable = callbacks.editTable,
         undo = undo,
         redo = redo,
         newDesign = newDesign,

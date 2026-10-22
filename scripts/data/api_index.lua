@@ -922,7 +922,7 @@ return {
     { "ui.FormLayout", "class", "ui.FormLayout(parent)", "ui.FormLayout(parent)", "Creates a FormLayout." },
     { "ui.FormLayout:getSpacing", "property", "getSpacing()", "getSpacing()", "Get the spacing property." },
     { "ui.FormLayout:setSpacing", "property", "setSpacing(value)", "setSpacing(value)", "Set the spacing property." },
-    { "ui.FormLayout:addChild", "method", "addChild(title, child)", "addChild(title, child)", "`addChild(\"Name\", field)` for a labelled row, or `addChild(widget)` (title is actually the widget) for a full-width unlabelled one - mirrors QFormLayout.addRow's own two call shapes." },
+    { "ui.FormLayout:addChild", "method", "addChild(title, child)", "addChild(title, child)", "`addChild(\"Name\", field)` for a labelled row, `addChild(label, field)` for one whose label is a widget you made -- a ui.Label you can style, or reach later -- or `addChild(widget)` (title is actually the widget) for a full-width unlabelled one." },
     { "ui.FormLayout:addLayout", "method", "addLayout(title, layout)", "addLayout(title, layout)", "addLayout on ui.FormLayout." },
     { "ui.FormLayout:clear", "method", "clear()", "clear()", "Remove and delete every item in the layout." },
     { "ui.FormLayout:getChildAt", "method", "getChildAt(index)", "getChildAt(index)", "1-indexed, like every Limekit collection accessor." },

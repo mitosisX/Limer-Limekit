@@ -33,6 +33,7 @@ local function textsFor(node)
         kind = kind .. " · " .. short(node.layout)
     end
     if node.buildError then kind = kind .. "  (failed)" end
+    if node.locked then kind = kind .. "  (locked)" end
     return node.name, kind
 end
 
@@ -45,6 +46,7 @@ function Outline:refresh(design)
         item:setEditable(false)
         local icon = Icons.forNode(node)
         if icon then item:setIcon(1, icon) end
+        if node.locked then item:setIcon(2, Icons.tool("lock")) end
         self.nodeOf[item], self.itemOf[node] = node, item
         if parentItem then parentItem:addChild(item) else self.tree:addTopItem(item) end
         for _, child in ipairs(node.children or {}) do add(child, item) end

@@ -6,7 +6,8 @@
 --
 -- Booleans are checkboxes and enums are drop-downs, both as cell widgets,
 -- so a value can only ever be set to something the widget accepts.
--- Numbers and text are typed straight into the cell.
+-- Numbers and text are typed straight into the cell. A list, and a Table's
+-- contents, are a button that opens an editor of their own.
 
 local ui  = require("limekit.ui")
 local sys = require("limekit.sys")
@@ -33,7 +34,8 @@ local NONE = "(none)"
 
 --- callbacks: onProp(node, name, value), onRename(node, name),
 --- onPlacement(node, field, value), onLayout(node, layoutClass),
---- onWindow(field, value)
+--- onWindow(field, value), onImage(node, slot, key), onLock(node, locked),
+--- editList(node, name) and editTable(node), which open the editors
 function Properties.new(table_, callbacks)
     local self = setmetatable({ table = table_, cb = callbacks, rows = {}, filling = false }, Properties)
     table_:setColumnHeaders({ "Property", "Value" })
@@ -72,26 +74,58 @@ local function current(widget, name)
     return nil
 end
 
--- How each catalogue kind is edited in the table. list and pair are typed
--- as text and read back by Catalog.parse.
+-- How each catalogue kind is edited in the table. A pair is typed as text
+-- and read back by Catalog.parse; a list opens the list editor.
 local ROW_KINDS = { string = "string", colour = "string", int = "int", float = "float",
-                    bool = "boolean", enum = "enum", list = "parsed", pair = "parsed" }
+                    bool = "boolean", enum = "enum", list = "list", pair = "parsed" }
+
+-- Row kinds whose value cell is a widget of its own, not typed into.
+local CELL_WIDGETS = { boolean = true, enum = true, image = true, list = true, table = true }
 
 -- One catalogue entry as a row.
 local function catalogRow(row, node, widget, entry, cb)
     local name, kind, options = entry[1], entry[2], entry[3]
     local value = node.props[name]
     if value == nil and kind ~= "list" and kind ~= "pair" then value = current(widget, name) end
-    row(name, value, ROW_KINDS[kind] or "string", function(v) cb.onProp(node, name, v) end, options, kind)
+    local r = row(name, value, ROW_KINDS[kind] or "string", function(v) cb.onProp(node, name, v) end, options, kind)
+    if kind == "list" then r.open = function() cb.editList(node, name) end end
 end
 
--- Each row: { label, value, kind, apply(value), options }.
--- kind: "section" | "string" | "int" | "float" | "boolean" | "enum" | "readonly"
+-- What a list's or a table's button says it holds.
+local SUMMARY_LENGTH = 44
+
+local function clip(text)
+    if #text <= SUMMARY_LENGTH then return text end
+    return text:sub(1, SUMMARY_LENGTH - 3) .. "..."
+end
+
+local function listSummary(value)
+    if type(value) ~= "table" or #value == 0 then return "(none)  --  edit..." end
+    return clip(("%d: %s"):format(#value, table.concat(value, ", ")))
+end
+
+local function tableSummary(contents)
+    local columns, rows = #contents.headers, #contents.rows
+    if columns == 0 and rows == 0 then return "(empty)  --  edit..." end
+    local titles = {}
+    for _, title in ipairs(contents.headers) do if title ~= "" then titles[#titles + 1] = title end end
+    local shape = ("%d %s x %d %s"):format(columns, columns == 1 and "column" or "columns",
+                                          rows, rows == 1 and "row" or "rows")
+    if #titles == 0 then return shape end
+    return clip(shape .. ": " .. table.concat(titles, ", "))
+end
+
+-- Each row: { label, value, kind, apply(value), options, catalog, open }.
+-- kind: "section" | "string" | "int" | "float" | "boolean" | "enum" | "image"
+--     | "parsed" | "list" | "table" | "readonly"
+-- A list or table row is a button; `open` is what pressing it does.
 function Properties:rowsFor(design, node, widget)
     local rows, cb = {}, self.cb
     local function row(label, value, kind, apply, options, catalog)
-        rows[#rows + 1] = { label = label, value = value, kind = kind, apply = apply,
-                            options = options, catalog = catalog }
+        local r = { label = label, value = value, kind = kind, apply = apply,
+                    options = options, catalog = catalog }
+        rows[#rows + 1] = r
+        return r
     end
     local function section(title)
         row(title, nil, "section")
@@ -118,12 +152,28 @@ function Properties:rowsFor(design, node, widget)
 
     section("Object")
     row("name", node.name, "string", function(v) cb.onRename(node, v) end)
+    if not (design and node == design.root) then
+        row("locked", node.locked == true, "boolean", function(v) cb.onLock(node, v) end)
+    end
     if DesignModel.hasLayout(node) then
         row("layout", node.layout:match("%.(.+)$"), "enum",
             function(v) cb.onLayout(node, "ui." .. v) end, LAYOUT_NAMES)
     end
     if node.buildError then
         row("error", node.buildError, "readonly", function() end)
+    end
+
+    -- A form's labels belong to its rows, and each is stored on the field it
+    -- labels. Shown here too, so a form's rows can be read and relabelled
+    -- in one place rather than one field at a time.
+    if node.layout == "ui.FormLayout" and #node.children > 0 then
+        section("Rows")
+        for _, child in ipairs(node.children) do
+            if child.form then
+                row(child.name, child.form.label, "string",
+                    function(v) cb.onPlacement(child, "form.label", v) end)
+            end
+        end
     end
 
     local slots = DesignModel.imageSlots(node.class)
@@ -153,9 +203,16 @@ function Properties:rowsFor(design, node, widget)
 
     if widget and not node.buildError then
         local entries = Catalog.forClass(node.class)
+        local isTable = node.class == "ui.Table"
         if entries then
             -- The catalogue: what designing this widget needs, by setter.
-            if #entries > 0 then section(node.class:match("%.(.+)$") or node.class) end
+            if #entries > 0 or isTable then section(node.class:match("%.(.+)$") or node.class) end
+            if isTable then
+                -- Titles, rows and cells: not setters one at a time, but one
+                -- grid, edited in the table editor.
+                local r = row("contents", DesignModel.tableContents(node), "table", function() end)
+                r.open = function() cb.editTable(node) end
+            end
             for _, entry in ipairs(entries) do catalogRow(row, node, widget, entry, cb) end
         else
             -- A widget nobody has written a list for: what it declares.
@@ -265,6 +322,20 @@ function Properties:show(node, widget, design)
                 later(function() r.apply(chosen or nil) end)
             end)
             self.table:setCellChild(i, 2, combo)
+        elseif r.kind == "list" or r.kind == "table" then
+            -- A button saying what is there; pressing it opens the editor.
+            -- The editor opens on the next turn: what it returns is applied,
+            -- applying rebuilds this table, and the button must not be
+            -- destroyed inside its own click.
+            local summary = r.kind == "list" and listSummary(r.value) or tableSummary(r.value)
+            local button = ui.Button(summary)
+            button:setStyleSheet("QPushButton { text-align: left; padding: 2px 8px; }")
+            button:setToolTip(r.kind == "list" and "Edit the items, one per row"
+                                               or "Edit the titles, rows and cells")
+            button:setOnClick(function()
+                if not self.filling and r.open then later(r.open) end
+            end)
+            self.table:setCellChild(i, 2, button)
         elseif r.kind == "parsed" then
             self.table:setCellText(i, 2, Catalog.show(r.catalog, r.value))
         elseif r.kind ~= "section" then
@@ -290,8 +361,7 @@ end
 function Properties:edited(row, column)
     if self.filling or column ~= 2 then return end
     local r = self.rows[row]
-    if not r or r.kind == "section" or r.kind == "readonly"
-        or r.kind == "boolean" or r.kind == "enum" or r.kind == "image" then
+    if not r or r.kind == "section" or r.kind == "readonly" or CELL_WIDGETS[r.kind] then
         return
     end
 

@@ -12,7 +12,8 @@
 --   string, int, float, bool   one value
 --   enum                       one of `options`
 --   colour                     a colour name or #rrggbb
---   list                       several strings, typed comma-separated;
+--   list                       several strings, edited one per row in the
+--                              list editor (gui/modals/list_editor.lua);
 --                              stored as a table, generated as setItems({ ... })
 --   pair                       two numbers, typed "0, 100"; stored as
 --                              { args = { 0, 100 } }, generated as setRange(0, 100)
@@ -66,9 +67,11 @@ Catalog.CLASSES = {
     ["ui.Splitter"] = { { "orientation", "enum", ORIENT }, { "handleWidth", "int" } },
     ["ui.Scroller"] = { { "resizable", "bool" } },
     ["ui.ListBox"] = { { "items", "list" } },
+    -- A Table's titles, row count and cells are its contents, edited
+    -- together in the table editor (Properties' "contents" row), so they
+    -- are not listed here one setter at a time.
     ["ui.Table"] = {
-        { "columnHeaders", "list" }, { "rowCount", "int" }, { "showGrid", "bool" },
-        { "alternatingRowColors", "bool" }, { "stretchLastColumn", "bool" },
+        { "showGrid", "bool" }, { "alternatingRowColors", "bool" }, { "stretchLastColumn", "bool" },
     },
     ["ui.TreeView"] = { { "headerLabels", "list" }, { "headerHidden", "bool" } },
     ["ui.Container"] = {},
@@ -86,6 +89,15 @@ Catalog.COMMON = {
 --- The entries for a class, or nil when it has none written down.
 function Catalog.forClass(class)
     return Catalog.CLASSES[class]
+end
+
+--- The first list a class holds -- a ComboBox's items, a TreeView's header
+--- labels -- or nil: what a double-click on the canvas opens the editor for.
+function Catalog.listProp(class)
+    for _, entry in ipairs(Catalog.CLASSES[class] or {}) do
+        if entry[2] == "list" then return entry[1] end
+    end
+    return nil
 end
 
 -- PARSING AND SHOWING VALUES ---------------------------------------------------
