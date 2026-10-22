@@ -268,3 +268,29 @@ Left/right/top/bottom align, center horizontal/vertical, distribute — pure mat
 - Modify: `scripts/gui/views/designer/view.lua` — toolbar + menu, enabled only when more than one widget is selected
 
 **Depends on:** 2.3 (multi-select) — nothing to align against with a single widget.
+
+---
+
+## Done after the plan (2026-10-22)
+
+- **Property lists for every palette widget.** Of the 30 widgets the palette offered, five had no list: DatePicker, TimePicker, HLine, VLine, Separator. DatePicker and Calendar now take a date (typed `2026-10-22`), TimePicker a time (`14:30` or `14:30:15`), both spread into `setDate` / `setTime` as a range is; Image gets its alignment; the three lines are listed as having nothing of their own to set. Only setters Limekit defines can be listed: Qt's own (QDateEdit's `setCalendarPopup`, say) are not reachable with Lua's colon syntax, so generated code calling one would fail. A check sets every catalogue property on its real widget — and found that an Image's size could only be set after its picture, while generated code set props first: images now go before props, in the generated code and on the canvas. (Limer `3b51d98`.)
+- **Spinner, DoubleSpinner and ProgressBar on the palette.** `buildable_classes` counted a class as buildable only if Limekit's own code defined its `__init__`; these three inherit Qt's no-argument one and were left off. Menubar and StatusBar, which the corrected rule also admits, are kept off the canvas with Toolbar and Menu. A test checks every widget the palette's groups name is offered. (Limekit `56d07c4`, not yet pushed.)
+
+## What's left
+
+**Checks in real Limer** — the owner's, to do later. Each is a minute, and each covers something the automated runs could not:
+- [ ] Drag two selected widgets into a row. No script can drive Qt's drag-and-drop loop, so the multi-move was tested by handing Limer the drop the surface reports.
+- [ ] Save a few times and watch the canvas's top-left: the white box (F6) should be gone.
+- [ ] Open the list and table editors once. The offscreen runs could not render text, so how they look is unchecked.
+
+**Small gaps** — none blocks an MVP:
+- [ ] GifPlayer is still off the palette: it needs a file to play, so it cannot be built bare. A default (no movie until `setFile`) would bring it on.
+- [ ] Copy, paste, duplicate and wrap act on one widget; with several selected they are disabled, not broken.
+- [ ] The grid is fixed at 16 px (`setGridSize` exists; nothing in Limer sets it), and the zoom is not remembered between sessions.
+- [ ] The outline highlights only the primary widget of a selection of several.
+- [ ] Guides show while resizing only. A move goes into a layout slot, which the drop indicator already shows; guides for moves would only matter for free positioning, which designs do not have.
+- [ ] `LIMEKIT_DEBUG_PAINT` (from the F6 hunt) is still in the engine. It does nothing unless set; keep it or remove it.
+
+**Bigger, needing engine work first:**
+- [ ] Button icons beyond an image, colour variants (primary, danger...) and badges — need theme support in Limekit.
+- [ ] HTTP client, WebSocket, data binding, translations — framework features, not designer work; apps can do these in Lua code meanwhile.
