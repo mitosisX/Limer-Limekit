@@ -264,7 +264,8 @@ function BuildDialog.show()
     singleFile:setToolTip("One portable program file. Off: a folder holding the program and "
         .. "its files, which starts faster.")
     local console = ui.CheckBox("Show a console window")
-    console:setChecked(true)
+    -- Off: a release is what most builds are for. Tick it while testing.
+    console:setChecked(false)
     console:setToolTip("A terminal beside the app showing print() output and errors -- "
         .. "useful while testing, usually off for release.")
     inputs[#inputs + 1] = singleFile
