@@ -956,13 +956,15 @@ end
 local function emitWidgets(node, lines)
     if DesignModel.isPseudo(node) then return end
     lines[#lines + 1] = ("w.%s = %s()"):format(node.name, node.class)
-    for _, key in ipairs(propOrder(node.props)) do
-        lines[#lines + 1] = ("w.%s:%s(%s)"):format(
-            node.name, setterName(key), callArgs(node.props[key]))
-    end
+    -- Images before props: some props size or place an image -- an Image's
+    -- setImageSize raises "Image has no source" until setImage has run.
     for _, slot in ipairs(sortedKeys(node.images)) do
         lines[#lines + 1] = ("w.%s:%s(%s)"):format(
             node.name, setterName(slot), imageRef(node.images[slot]))
+    end
+    for _, key in ipairs(propOrder(node.props)) do
+        lines[#lines + 1] = ("w.%s:%s(%s)"):format(
+            node.name, setterName(key), callArgs(node.props[key]))
     end
     -- A Table's cells, after the setters above have given it its rows and
     -- columns. A blank cell is left alone rather than set to "".

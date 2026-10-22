@@ -918,6 +918,71 @@ check("distributing gives a row's or column's widgets the same stretch", functio
     eq(ok, false); assert(why:find("same row or column", 1, true), why)
 end)
 
+-- EVERY CATALOGUE ENTRY, ON A REAL WIDGET -----------------------------------
+
+check("dates and times parse from what is typed, and show back", function()
+    local d = Catalog.parse("date", "2026-10-22")
+    eq(d.args[1], 2026); eq(d.args[3], 22)
+    eq(Catalog.show("date", d), "2026-10-22")
+    eq((Catalog.parse("date", "2026-13-01")), nil); eq((Catalog.parse("date", "tomorrow")), nil)
+    local t = Catalog.parse("time", "9:05")
+    eq(t.args[1], 9); eq(t.args[2], 5); eq(t.args[3], 0)
+    eq(Catalog.show("time", Catalog.parse("time", "14:30:15")), "14:30:15")
+    eq((Catalog.parse("time", "25:00")), nil)
+end)
+
+check("every catalogue property can be set on its real widget", function()
+    local realUi = require("limekit.ui")
+    local Canvas = require("gui.views.designer.canvas")
+    local samples = {
+        string = "text", colour = "#336699", int = 1, float = 1.5, bool = true,
+        list = { "A", "B" }, pair = { args = { 0, 10 } },
+        date = { args = { 2026, 10, 22 } }, time = { args = { 14, 30, 0 } },
+    }
+    local tried, failed = 0, {}
+    for class, entries in pairs(Catalog.CLASSES) do
+        local made, widget = pcall(function() return realUi[class:match("%.(.+)$")]() end)
+        -- Some catalogued classes are not buildable bare (the palette leaves them out).
+        if made and widget then
+            if class == "ui.Image" then widget:setImage(here .. "/../../images/app.png") end
+            for _, entry in ipairs(entries) do
+                local value = entry[2] == "enum" and entry[3][1] or samples[entry[2]]
+                local ok, why = Canvas.apply(widget, entry[1], value)
+                tried = tried + 1
+                if not ok then failed[#failed + 1] = class .. "." .. entry[1] .. ": " .. tostring(why) end
+            end
+        end
+    end
+    assert(#failed == 0, table.concat(failed, "\n      "))
+    assert(tried > 60, "only " .. tried .. " entries tried")
+end)
+
+check("a design using dates and times generates code the real engine runs", function()
+    local d = DesignModel.blank()
+    local date = DesignModel.node("ui.DatePicker"); date.props.date = { args = { 2026, 10, 22 } }
+    local time = DesignModel.node("ui.TimePicker"); time.props.time = { args = { 14, 30, 0 } }
+    DesignModel.insert(d, d.root, date, { index = 1 })
+    DesignModel.insert(d, d.root, time, { index = 2 })
+    local text = DesignModel.generate(d, "when")
+    assert(text:find("w.datePicker1:setDate(2026, 10, 22)", 1, true), text)
+    assert(text:find("w.timePicker1:setTime(14, 30, 0)", 1, true), text)
+    local chunk = assert(load(text, "when", "t", { require = require }))
+    local w = chunk().new()
+    assert(w.datePicker1 and w.timePicker1 and w.window)
+end)
+
+check("a widget's image is set before the props that size it", function()
+    local d = DesignModel.blank()
+    local img = DesignModel.node("ui.Image")
+    img.images = { image = "logo" }
+    img.props.imageSize = { args = { 64, 64 } }
+    DesignModel.insert(d, d.root, img, { index = 1 })
+    local text = DesignModel.generate(d, "pic")
+    local picture = text:find("w.image1:setImage(images.logo)", 1, true)
+    local sized = text:find("w.image1:setImageSize(64, 64)", 1, true)
+    assert(picture and sized and picture < sized, text)
+end)
+
 -- PREVIEW -------------------------------------------------------------------
 
 check("a preview carries the images its design names, and their map", function()

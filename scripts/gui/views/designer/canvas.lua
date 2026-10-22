@@ -115,14 +115,16 @@ function Canvas:build(node)
         ok = false
     end
 
-    for name, value in pairs(node.props or {}) do
-        Canvas.apply(widget, name, value)
-    end
-    -- Images are named, not pathed; the name is looked up in the project's
-    -- images now, so a moved file still shows.
+    -- Images first, as the generated code sets them: an Image's size means
+    -- nothing -- and raises -- before it has a picture. Images are named, not
+    -- pathed; the name is looked up in the project's images now, so a moved
+    -- file still shows.
     for slot, key in pairs(node.images or {}) do
         local path = Images.path(key)
         if path then Canvas.apply(widget, slot, path) end
+    end
+    for name, value in pairs(node.props or {}) do
+        Canvas.apply(widget, name, value)
     end
     -- A Table's cells, once the props above have given it its rows and
     -- columns -- in the same order the generated code sets them.

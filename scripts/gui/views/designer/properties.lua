@@ -77,7 +77,8 @@ end
 -- How each catalogue kind is edited in the table. A pair is typed as text
 -- and read back by Catalog.parse; a list opens the list editor.
 local ROW_KINDS = { string = "string", colour = "string", int = "int", float = "float",
-                    bool = "boolean", enum = "enum", list = "list", pair = "parsed" }
+                    bool = "boolean", enum = "enum", list = "list", pair = "parsed",
+                    date = "parsed", time = "parsed" }
 
 -- Row kinds whose value cell is a widget of its own, not typed into.
 local CELL_WIDGETS = { boolean = true, enum = true, image = true, list = true, table = true }
@@ -86,7 +87,11 @@ local CELL_WIDGETS = { boolean = true, enum = true, image = true, list = true, t
 local function catalogRow(row, node, widget, entry, cb)
     local name, kind, options = entry[1], entry[2], entry[3]
     local value = node.props[name]
-    if value == nil and kind ~= "list" and kind ~= "pair" then value = current(widget, name) end
+    -- A list, pair, date or time is read from the design only: the widget's
+    -- getters hand back other shapes than the setters take.
+    if value == nil and ROW_KINDS[kind] ~= "list" and ROW_KINDS[kind] ~= "parsed" then
+        value = current(widget, name)
+    end
     local r = row(name, value, ROW_KINDS[kind] or "string", function(v) cb.onProp(node, name, v) end, options, kind)
     if kind == "list" then r.open = function() cb.editList(node, name) end end
 end

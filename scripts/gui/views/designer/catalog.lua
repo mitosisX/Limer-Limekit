@@ -17,6 +17,14 @@
 --                              stored as a table, generated as setItems({ ... })
 --   pair                       two numbers, typed "0, 100"; stored as
 --                              { args = { 0, 100 } }, generated as setRange(0, 100)
+--   date                       typed "2026-10-22"; stored as { args = { 2026, 10, 22 } },
+--                              generated as setDate(2026, 10, 22)
+--   time                       typed "14:30" or "14:30:15"; stored and spread the same
+--                              way, as setTime(14, 30, 0)
+--
+-- Only setters Limekit itself defines can be listed. Qt's own methods --
+-- QDateEdit's setCalendarPopup, say -- are not reachable with Lua's colon
+-- syntax, so generated code calling one would fail where the canvas did not.
 --
 -- A class missing from the table falls back to what introspection finds.
 
@@ -57,8 +65,10 @@ Catalog.CLASSES = {
     ["ui.LCDNumber"] = {
         { "digitCount", "int" }, { "value", "float" }, { "segmentStyle", "enum", { "filled", "flat", "outline" } },
     },
-    ["ui.Calendar"] = { { "gridVisible", "bool" } },
-    ["ui.Image"] = { { "imageSize", "pair" } },
+    ["ui.Calendar"] = { { "date", "date" }, { "gridVisible", "bool" } },
+    ["ui.DatePicker"] = { { "date", "date" } },
+    ["ui.TimePicker"] = { { "time", "time" } },
+    ["ui.Image"] = { { "imageSize", "pair" }, { "imageAlignment", "enum", ALIGN } },
     ["ui.GroupBox"] = { { "title", "string" }, { "checkable", "bool" }, { "checked", "bool" }, { "flat", "bool" } },
     ["ui.Tab"] = {
         { "tabPosition", "enum", { "top", "bottom", "left", "right" } },
@@ -76,6 +86,10 @@ Catalog.CLASSES = {
     ["ui.TreeView"] = { { "headerLabels", "list" }, { "headerHidden", "bool" } },
     ["ui.Container"] = {},
     ["ui.Accordion"] = {},
+    -- Lines are only drawn: nothing to set but what every widget has.
+    ["ui.HLine"] = {},
+    ["ui.VLine"] = {},
+    ["ui.Separator"] = {},
 }
 Catalog.CLASSES["ui.TreeWidget"] = Catalog.CLASSES["ui.TreeView"]
 Catalog.CLASSES["ui.FontComboBox"] = { { "editable", "bool" } }
@@ -106,6 +120,14 @@ end
 function Catalog.show(kind, value)
     if value == nil then return "" end
     if kind == "list" and type(value) == "table" then return table.concat(value, ", ") end
+    if kind == "date" and type(value) == "table" and value.args then
+        local a = value.args
+        return ("%04d-%02d-%02d"):format(a[1] or 0, a[2] or 0, a[3] or 0)
+    end
+    if kind == "time" and type(value) == "table" and value.args then
+        local a = value.args
+        return ("%02d:%02d:%02d"):format(a[1] or 0, a[2] or 0, a[3] or 0)
+    end
     if kind == "pair" and type(value) == "table" then
         local a = value.args or value
         return tostring(a[1] or "") .. ", " .. tostring(a[2] or "")
@@ -135,6 +157,21 @@ function Catalog.parse(kind, text)
             if part ~= "" then items[#items + 1] = part end
         end
         return items
+    elseif kind == "date" then
+        local y, m, d = text:match("^(%d%d%d%d)[-/.](%d%d?)[-/.](%d%d?)$")
+        y, m, d = tonumber(y), tonumber(m), tonumber(d)
+        if not y or m < 1 or m > 12 or d < 1 or d > 31 then
+            return nil, "a date, like 2026-10-22"
+        end
+        return { args = { y, m, d } }
+    elseif kind == "time" then
+        local h, mi, sec = text:match("^(%d%d?):(%d%d)$")
+        if not h then h, mi, sec = text:match("^(%d%d?):(%d%d):(%d%d)$") end
+        h, mi, sec = tonumber(h), tonumber(mi), tonumber(sec) or 0
+        if not h or h > 23 or mi > 59 or sec > 59 then
+            return nil, "a time, like 14:30 or 14:30:15"
+        end
+        return { args = { h, mi, sec } }
     elseif kind == "pair" then
         local a, b = text:match("^(%-?[%d.]+)%s*[,;%s]%s*(%-?[%d.]+)$")
         a, b = tonumber(a), tonumber(b)
