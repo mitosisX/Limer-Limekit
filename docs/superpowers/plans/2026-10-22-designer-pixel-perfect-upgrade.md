@@ -43,8 +43,20 @@
 | 2.4 | 2 — Native DesignSurface (Limekit) | Multi-widget resize/move | 2.3, benefits from 2.2 | Done (2026-10-22) |
 | 2.5 | 2 — Native DesignSurface (Limekit) | Smart guide lines while resizing (edges and sizes) | 2.2 | Done (2026-10-22) |
 | 3.1 | 3 — Lua, unlocked by Phase 2 (Limer) | Align in slot / match size / distribute evenly | 2.3 | Done (2026-10-22) |
+| P1 | After the plan — Lua (Limer) | Property lists for every palette widget: dates, times, image alignment | — | Done (2026-10-22) |
+| P2 | After the plan — Limekit | Spinner, DoubleSpinner and ProgressBar offered on the palette | — | Done (2026-10-22) |
+| C1 | Checks — the owner, in real Limer | Drag two selected widgets into a row | — | Later |
+| C2 | Checks — the owner, in real Limer | Save a few times; the white box (F6) is gone | — | Later |
+| C3 | Checks — the owner, in real Limer | Open the list and table editors; they look right | — | Later |
+| G1 | Gaps — optional | GifPlayer on the palette (needs a no-file default) | — | Not started |
+| G2 | Gaps — optional | Copy, paste, duplicate and wrap for several at once | — | Not started |
+| G3 | Gaps — optional | A grid size setting; remember the zoom | — | Not started |
+| G4 | Gaps — optional | Outline highlights the whole selection, not just the primary | — | Not started |
+| G5 | Gaps — optional | Keep or remove `LIMEKIT_DEBUG_PAINT` | — | Not started |
+| E1 | Needs engine work first | Button icons beyond an image, colour variants, badges | Theme support in Limekit | Not started |
+| E2 | Needs engine work first | HTTP client, WebSocket, data binding, translations | — | Not started |
 
-**Build order:** 1.1 → 1.2/1.3 → 1.4a → 1.4b → F1 → F2 → F3 → F4 → F5 → F6 → F7 → 2.1 → 2.2 → 2.3 → 2.4 → 2.5 → 3.1
+**Build order:** 1.1 → 1.2/1.3 → 1.4a → 1.4b → F1 → F2 → F3 → F4 → F5 → F6 → F7 → 2.1 → 2.2 → 2.3 → 2.4 → 2.5 → 3.1 → P1 → P2. Next: C1–C3 (the owner's checks); G and E rows are optional or wait on the engine.
 
 The fixes go before Phase 2 on purpose: F4 rewrites how `ui.DesignSurface` decides what is under the mouse, and zoom (2.1), snapping (2.2) and multi-select (2.3) all build on that same hit-testing.
 
