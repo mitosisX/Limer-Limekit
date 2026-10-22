@@ -5,6 +5,7 @@
 
 local fs = require("limekit.fs")
 local DesignModel = require "app.core.design_model"
+local Images = require "app.core.images"
 
 local FS = fs.FileSystem
 local Files = {}
@@ -58,10 +59,34 @@ function Files.writeGenerated(project, name, source)
     return path
 end
 
+-- The images a design names, copied into the preview with the image map
+-- that resolves them. The generated module requires designed.images, and
+-- res.Resources.images reads the *running* project's images folder --
+-- which, for a preview, is design/.preview/images. Without both, a design
+-- with a window icon or any image failed to run at all.
+local function copyImages(project, dir, design)
+    local used = {}
+    for _, key in ipairs(DesignModel.imagesUsed(design)) do used[key] = true end
+    local list = {}
+    for _, image in ipairs(Images.scan(project)) do
+        if used[image.key] then list[#list + 1] = image end
+    end
+    if #list == 0 then return end
+    local images = FS.joinPaths(dir, "images")
+    for _, image in ipairs(list) do
+        local target = FS.joinPaths(images, image.path)
+        local folder = target:match("^(.*)[/\\][^/\\]+$")
+        if folder and not FS.exists(folder) then FS.createFolder(folder) end
+        FS.copyFile(FS.joinPaths(Images.folder(project), image.path), target)
+    end
+    FS.writeFile(Images.modulePath(dir), Images.module(list))
+end
+
 --- A throwaway project that shows the design and nothing else, so the
 --- normal project runner can run it. Lives under design/.preview/ so it
 --- travels with the project and is easy to delete. Returns its path.
-function Files.writePreview(project, name, source)
+--- `design` is optional: given, the images it names go along.
+function Files.writePreview(project, name, source, design)
     local dir = FS.joinPaths(designDir(project), ".preview")
     local scripts = FS.joinPaths(dir, "scripts")
     local designed = FS.joinPaths(scripts, "designed")
@@ -76,6 +101,7 @@ function Files.writePreview(project, name, source)
             "-- Preview written by Limer's designer. Delete freely.\n" ..
             'local design = require("designed.' .. name .. '").new()\n' ..
             "design.window:show()\n")
+        if design then copyImages(project, dir, design) end
     end)
     if not ok then return nil, tostring(err) end
     return dir

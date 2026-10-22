@@ -476,6 +476,119 @@ function DesignModel.reorder(design, node, where)
     return true
 end
 
+-- SEVERAL AT ONCE -----------------------------------------------------------
+
+-- A list without any node that sits inside another node of the list: moving
+-- or deleting a row and a button in it would otherwise do the button twice.
+local function outermost(nodes)
+    local out = {}
+    for _, node in ipairs(nodes) do
+        local inside = false
+        for _, other in ipairs(nodes) do
+            if other ~= node and descends(node, other) then inside = true; break end
+        end
+        if not inside then out[#out + 1] = node end
+    end
+    return out
+end
+DesignModel.outermost = outermost
+
+--- Moves several nodes into one container, side by side from `slot`, in the
+--- order given. In a grid, one row after another from the slot's cell.
+--- All or nothing: the caller works on a snapshot, so a refusal half way
+--- leaves the design as it was.
+function DesignModel.moveMany(design, nodes, parent, slot)
+    nodes = outermost(nodes)
+    if #nodes == 0 then return false, "nothing to move" end
+    local grid = KINDS[parent.layout] == "grid"
+    local previous
+    for i, node in ipairs(nodes) do
+        local s
+        if grid then
+            s = { row = (slot.row or 1) + i - 1, column = slot.column or 1 }
+        elseif previous then
+            -- Just after the one moved before it, measured as move() measures:
+            -- with this node still where it was.
+            s = { index = DesignModel.indexOf(parent, previous) + 1 }
+        else
+            s = { index = slot.index }
+        end
+        local ok, why = DesignModel.move(design, node, parent, s)
+        if not ok then return false, why end
+        previous = node
+    end
+    return true
+end
+
+--- Deletes several nodes. Refused whole if any is the root or holds a lock.
+function DesignModel.removeMany(design, nodes)
+    nodes = outermost(nodes)
+    for _, node in ipairs(nodes) do
+        if node == design.root then return false, "the root cannot be removed" end
+        local held = DesignModel.lockedWithin(node)
+        if held then return false, lockedReason(held) end
+    end
+    for _, node in ipairs(nodes) do
+        local ok, why = DesignModel.remove(design, node)
+        if not ok then return false, why end
+    end
+    return true
+end
+
+-- ALIGNMENT -----------------------------------------------------------------
+
+-- Where a widget sits in the space its layout gives it. Laid out, a widget
+-- fills that space; aligned in a direction it keeps its own size that way
+-- and sits at the side named. Stored on the node as `halign` and `valign`,
+-- generated as Layout:setChildAlignment(widget, ...).
+local ALIGN_AXIS = {
+    left = "halign", hcenter = "halign", right = "halign",
+    top = "valign", vcenter = "valign", bottom = "valign",
+}
+DesignModel.ALIGNMENTS = { "left", "hcenter", "right", "top", "vcenter", "bottom" }
+
+--- `how` is one of DesignModel.ALIGNMENTS, or "hfill" / "vfill" to fill
+--- that way again.
+function DesignModel.align(design, nodes, how)
+    local axis = ALIGN_AXIS[how] or (how == "hfill" and "halign") or (how == "vfill" and "valign")
+    if not axis then return false, "unknown alignment " .. tostring(how) end
+    if #nodes == 0 then return false, "nothing selected" end
+    for _, node in ipairs(nodes) do
+        if node == design.root then return false, "the window has nothing to align in" end
+        if DesignModel.isPseudo(node) then return false, "only a widget can be aligned" end
+        if node.locked then return false, lockedReason(node) end
+        local parent = DesignModel.parentOf(design, node)
+        if not parent then return false, "not in the design" end
+        if not DesignModel.hasLayout(parent) then
+            return false, node.name .. " fills its " .. (parent.class:match("%.(.+)$") or "holder")
+        end
+    end
+    for _, node in ipairs(nodes) do
+        node[axis] = ALIGN_AXIS[how] and how or nil
+    end
+    return true
+end
+
+--- Gives every node the same stretch in its row or column, so they share
+--- its space equally. They must all be in one row or one column.
+function DesignModel.distribute(design, nodes)
+    if #nodes < 2 then return false, "select two or more to distribute" end
+    local parent = DesignModel.parentOf(design, nodes[1])
+    local kind = parent and KINDS[parent.layout]
+    if kind ~= "vbox" and kind ~= "hbox" then
+        return false, "distribute works on widgets in one row or column"
+    end
+    for _, node in ipairs(nodes) do
+        if DesignModel.parentOf(design, node) ~= parent then
+            return false, "they must all be in the same row or column"
+        end
+        if node.locked then return false, lockedReason(node) end
+        if DesignModel.isPseudo(node) then return false, "only widgets can be distributed" end
+    end
+    for _, node in ipairs(nodes) do node.stretch = 1 end
+    return true
+end
+
 --- Changes a container's layout, converting how its children are placed.
 --- Grid children are ordered row-major; a box's stretch and spacing items
 --- are dropped when leaving a box, since nothing else can hold them.
@@ -651,6 +764,13 @@ local function checkNode(node, path)
     if type(node.class) ~= "string" then return false, path .. " has no class" end
     if type(node.name) ~= "string" then return false, path .. " has no name" end
     node.props = node.props or {}
+    -- Alignments are generated as names the layout must know.
+    if node.halign ~= nil and ALIGN_AXIS[node.halign] ~= "halign" then
+        return false, path .. " has an unknown horizontal alignment " .. tostring(node.halign)
+    end
+    if node.valign ~= nil and ALIGN_AXIS[node.valign] ~= "valign" then
+        return false, path .. " has an unknown vertical alignment " .. tostring(node.valign)
+    end
     -- Cells are generated as text, so anything but rows of strings is refused
     -- here rather than turning into nil in the generated code.
     if node.cells ~= nil then
@@ -912,8 +1032,33 @@ local function emitLayouts(node, lines)
         else
             lines[#lines + 1] = ("%s:addChild(w.%s)"):format(L, child.name)
         end
+        local align = DesignModel.alignmentOf(child)
+        if align then
+            lines[#lines + 1] = ("%s:setChildAlignment(w.%s, %s)"):format(L, child.name, align)
+        end
     end
     lines[#lines + 1] = ("w.%s:setLayout(%s)"):format(node.name, L)
+end
+
+--- A node's alignment as setChildAlignment's arguments -- '"left", "top"' --
+--- or nil when it fills both ways.
+function DesignModel.alignmentOf(node)
+    if DesignModel.isPseudo(node) then return nil end
+    local parts = {}
+    if node.halign then parts[#parts + 1] = literal(node.halign) end
+    if node.valign then parts[#parts + 1] = literal(node.valign) end
+    if #parts == 0 then return nil end
+    return table.concat(parts, ", ")
+end
+
+--- The same, as a list of names, for the canvas to apply.
+function DesignModel.alignmentNames(node)
+    local names = {}
+    if not DesignModel.isPseudo(node) then
+        names[#names + 1] = node.halign
+        names[#names + 1] = node.valign
+    end
+    return names
 end
 
 --- The design as a Lua module whose new() builds a fresh window and

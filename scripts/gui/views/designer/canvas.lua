@@ -45,8 +45,16 @@ function Canvas.new(surface, onDrop, onSelect, onImage)
             onDrop({ kind = "class", class = drop.class, target = target, slot = slot })
         else
             local node = self:nodeFor(drop.widget)
+            -- Everything travelling, when several were selected: `nodes`, in
+            -- design order, the held one among them.
+            local nodes = {}
+            for _, widget in ipairs(drop.widgets or {}) do
+                local n = self:nodeFor(widget)
+                if n then nodes[#nodes + 1] = n end
+            end
             if node then
-                onDrop({ kind = "move", node = node, target = target, slot = slot })
+                onDrop({ kind = "move", node = node, nodes = #nodes > 1 and nodes or nil,
+                         target = target, slot = slot })
             end
         end
     end)
@@ -152,16 +160,23 @@ function Canvas:build(node)
                 layout:addStretch(child.stretch or 1)
             elseif child.kind == "spacing" then
                 layout:addSpacing(child.size or 0)
-            elseif kind == "grid" then
-                local g = child.grid
-                layout:addChild(self:build(child), g.row, g.column, g.rowSpan or 1, g.columnSpan or 1)
-            elseif kind == "form" then
-                local field = self:build(child)
-                local title = ui.Label((child.form or {}).label or "")
-                self.formLabels[title] = child
-                layout:addChild(title, field)
             else
-                layout:addChild(self:build(child), child.stretch or 0)
+                local built = self:build(child)
+                if kind == "grid" then
+                    local g = child.grid
+                    layout:addChild(built, g.row, g.column, g.rowSpan or 1, g.columnSpan or 1)
+                elseif kind == "form" then
+                    local title = ui.Label((child.form or {}).label or "")
+                    self.formLabels[title] = child
+                    layout:addChild(title, built)
+                else
+                    layout:addChild(built, child.stretch or 0)
+                end
+                -- Where it sits in its slot, as the generated code will say.
+                local names = DesignModel.alignmentNames(child)
+                if #names > 0 then
+                    pcall(function() layout:setChildAlignment(built, table.unpack(names)) end)
+                end
             end
         end
         -- An empty container has no size of its own, and a target with no
@@ -224,6 +239,16 @@ end
 
 function Canvas:select(node)
     self.surface:setSelected(node and self.widgetOf[node] or nil)
+end
+
+--- Several selected; the last is the primary one, with the handles.
+function Canvas:selectMany(nodes)
+    local widgets = {}
+    for _, node in ipairs(nodes) do
+        local widget = self.widgetOf[node]
+        if widget then widgets[#widgets + 1] = widget end
+    end
+    self.surface:setSelection(widgets)
 end
 
 return Canvas

@@ -1,10 +1,10 @@
 -- Outline
--- The tree beside the canvas, mirroring the model: name and type, with the
--- widget's icon. Click to select; a selection made anywhere else is shown
--- here too.
+-- The tree beside the canvas, mirroring the model: each node's name beside
+-- its widget's icon, which already says what it is -- a column spelling the
+-- type out too only took the width the names needed. Click to select; a
+-- selection made anywhere else is shown here too.
 
 local ui = require("limekit.ui")
-local DesignModel = require "app.core.design_model"
 local Icons = require "gui.views.designer.icons"
 
 local Outline = {}
@@ -12,8 +12,7 @@ Outline.__index = Outline
 
 function Outline.new(tree, onSelect)
     local self = setmetatable({ tree = tree, nodeOf = {}, itemOf = {} }, Outline)
-    tree:setHeaderLabels({ "Object", "Type" })
-    tree:setColumnWidth(1, 190)
+    tree:setHeaderLabels({ "Object" })
     tree:setOnItemClick(function(_, item)
         local node = self.nodeOf[item]
         if node then onSelect(node) end
@@ -21,32 +20,24 @@ function Outline.new(tree, onSelect)
     return self
 end
 
-local function short(name)
-    return name:match("%.(.+)$") or name
-end
-
-local function textsFor(node)
-    if node.kind == "stretch" then return "stretch", ("Stretch %d"):format(node.stretch or 1) end
-    if node.kind == "spacing" then return "spacing", ("Spacing %d px"):format(node.size or 0) end
-    local kind = short(node.class)
-    if DesignModel.isContainer(node) then
-        kind = kind .. " · " .. short(node.layout)
-    end
-    if node.buildError then kind = kind .. "  (failed)" end
-    if node.locked then kind = kind .. "  (locked)" end
-    return node.name, kind
+-- What a row says: the node's name, or for a stretch or spacing, what it is.
+local function textFor(node)
+    if node.kind == "stretch" then return ("Stretch %d"):format(node.stretch or 1) end
+    if node.kind == "spacing" then return ("Spacing %d px"):format(node.size or 0) end
+    local name = node.name
+    if node.buildError then name = name .. "  (failed)" end
+    if node.locked then name = name .. "  (locked)" end
+    return name
 end
 
 function Outline:refresh(design)
     self.tree:clear()
     self.nodeOf, self.itemOf = {}, {}
     local function add(node, parentItem)
-        local name, kind = textsFor(node)
-        local item = ui.TreeViewItem({ name, kind })
+        local item = ui.TreeViewItem({ textFor(node) })
         item:setEditable(false)
         local icon = Icons.forNode(node)
         if icon then item:setIcon(1, icon) end
-        if node.locked then item:setIcon(2, Icons.tool("lock")) end
         self.nodeOf[item], self.itemOf[node] = node, item
         if parentItem then parentItem:addChild(item) else self.tree:addTopItem(item) end
         for _, child in ipairs(node.children or {}) do add(child, item) end

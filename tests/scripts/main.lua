@@ -799,5 +799,154 @@ check("deserialize refuses cells that are not rows of text", function()
     eq(design, nil); assert(why:find("is not a row", 1, true), why)
 end)
 
+-- SEVERAL AT ONCE -----------------------------------------------------------
+
+local function columnOf(d, ...)
+    local nodes = {}
+    for i, class in ipairs({ ... }) do
+        nodes[i] = DesignModel.node(class)
+        DesignModel.insert(d, d.root, nodes[i], { index = i })
+    end
+    return nodes
+end
+
+check("several move into a container side by side, in the order given", function()
+    local d = DesignModel.blank()
+    local box = DesignModel.container("ui.HLayout")
+    DesignModel.insert(d, d.root, box, { index = 1 })
+    local a, b, c = table.unpack(columnOf(d, "ui.Button", "ui.Label", "ui.LineEdit"))
+    -- columnOf put them first: root = a, b, c, box
+    assert(DesignModel.moveMany(d, { a, c }, box, { index = 1 }))
+    eq(box.children[1], a); eq(box.children[2], c); eq(#d.root.children, 2)
+    eq(a.stretch, 0)
+    -- within the same container, to its end
+    assert(DesignModel.moveMany(d, { box, b }, d.root, { index = 1 }))
+    eq(d.root.children[1], box); eq(d.root.children[2], b)
+end)
+
+check("several moving into a grid take one row after another", function()
+    local d = DesignModel.blank()
+    local grid = DesignModel.container("ui.GridLayout")
+    DesignModel.insert(d, d.root, grid, { index = 1 })
+    local a, b = table.unpack(columnOf(d, "ui.Button", "ui.Button"))
+    assert(DesignModel.moveMany(d, { a, b }, grid, { row = 2, column = 3 }))
+    eq(a.grid.row, 2); eq(b.grid.row, 3); eq(b.grid.column, 3)
+end)
+
+check("a node inside another of the same selection moves with it, not twice", function()
+    local d = DesignModel.blank()
+    local box = DesignModel.container("ui.HLayout")
+    DesignModel.insert(d, d.root, box, { index = 1 })
+    local inner = DesignModel.node("ui.Button")
+    DesignModel.insert(d, box, inner, { index = 1 })
+    local target = DesignModel.container("ui.VLayout")
+    DesignModel.insert(d, d.root, target, { index = 2 })
+    assert(DesignModel.moveMany(d, { box, inner }, target, { index = 1 }))
+    eq(target.children[1], box); eq(box.children[1], inner)
+end)
+
+check("a refused move of several leaves nothing half done for the snapshot to undo", function()
+    local d = DesignModel.blank()
+    local a, b = table.unpack(columnOf(d, "ui.Button", "ui.Button"))
+    assert(DesignModel.setLocked(d, b, true))
+    local box = DesignModel.container("ui.HLayout")
+    DesignModel.insert(d, d.root, box, { index = 3 })
+    local ok, why = DesignModel.moveMany(d, { a, b }, box, { index = 1 })
+    eq(ok, false); assert(why:find("locked", 1, true), why)
+end)
+
+check("deleting several is refused whole if any holds a lock", function()
+    local d = DesignModel.blank()
+    local a, b, c = table.unpack(columnOf(d, "ui.Button", "ui.Button", "ui.Button"))
+    assert(DesignModel.setLocked(d, c, true))
+    local ok, why = DesignModel.removeMany(d, { a, c })
+    eq(ok, false); assert(why:find("locked", 1, true), why); eq(#d.root.children, 3)
+    assert(DesignModel.removeMany(d, { a, b }))
+    eq(#d.root.children, 1); eq(d.root.children[1], c)
+end)
+
+-- ALIGN AND DISTRIBUTE ------------------------------------------------------
+
+check("aligning sets where a widget sits in its slot, and fill clears it", function()
+    local d = DesignModel.blank()
+    local a, b = table.unpack(columnOf(d, "ui.Button", "ui.Button"))
+    assert(DesignModel.align(d, { a, b }, "right"))
+    eq(a.halign, "right"); eq(b.halign, "right")
+    assert(DesignModel.align(d, { a }, "bottom"))
+    eq(a.valign, "bottom"); eq(a.halign, "right")
+    assert(DesignModel.align(d, { a }, "hfill"))
+    eq(a.halign, nil); eq(a.valign, "bottom")
+    eq((DesignModel.align(d, { d.root }, "left")), false)
+    eq((DesignModel.align(d, { a }, "sideways")), false)
+    -- a pane fills its splitter: there is no slot to align in
+    local split = DesignModel.node("ui.Splitter")
+    DesignModel.insert(d, d.root, split, { index = 3 })
+    local pane = DesignModel.node("ui.Label")
+    DesignModel.insert(d, split, pane, { index = 1 })
+    local ok, why = DesignModel.align(d, { pane }, "left")
+    eq(ok, false); assert(why:find("fills", 1, true), why)
+end)
+
+check("an alignment generates after the widget is added, and round-trips", function()
+    local d = DesignModel.blank()
+    local a = columnOf(d, "ui.Button")[1]
+    assert(DesignModel.align(d, { a }, "hcenter"))
+    assert(DesignModel.align(d, { a }, "top"))
+    local text = DesignModel.generate(d, "aligned")
+    local added = text:find("rootLayout:addChild(w.button1)", 1, true)
+    local aligned = text:find('rootLayout:setChildAlignment(w.button1, "hcenter", "top")', 1, true)
+    assert(added and aligned and added < aligned, text)
+    runGenerated(text)
+    local back = assert(DesignModel.deserialize(DesignModel.serialize(d)))
+    eq(back.root.children[1].halign, "hcenter")
+    back.root.children[1].halign = "top"          -- a vertical name on the horizontal axis
+    local bad, why = DesignModel.deserialize(DesignModel.serialize(back))
+    eq(bad, nil); assert(why:find("horizontal alignment", 1, true), why)
+end)
+
+check("distributing gives a row's or column's widgets the same stretch", function()
+    local d = DesignModel.blank()
+    local a, b = table.unpack(columnOf(d, "ui.Button", "ui.Button"))
+    assert(DesignModel.distribute(d, { a, b }))
+    eq(a.stretch, 1); eq(b.stretch, 1)
+    eq((DesignModel.distribute(d, { a })), false)
+    local box = DesignModel.container("ui.HLayout")
+    DesignModel.insert(d, d.root, box, { index = 3 })
+    local c = DesignModel.node("ui.Button")
+    DesignModel.insert(d, box, c, { index = 1 })
+    local ok, why = DesignModel.distribute(d, { a, c })
+    eq(ok, false); assert(why:find("same row or column", 1, true), why)
+end)
+
+-- PREVIEW -------------------------------------------------------------------
+
+check("a preview carries the images its design names, and their map", function()
+    local Files = require("gui.views.designer.files")
+    local sep = package.config:sub(1, 1)
+    local project = FS.joinPaths(os.getenv("TEMP") or os.getenv("TMPDIR") or "/tmp",
+        "limer-preview-check-" .. tostring(os.time()))
+    local root = FS.joinPaths(project, "images")
+    FS.createFolder(FS.joinPaths(root, "brand"))
+    FS.writeFile(FS.joinPaths(root, "brand" .. sep .. "logo.png"), "png")
+    FS.writeFile(FS.joinPaths(root, "unused.png"), "png")
+
+    local d = DesignModel.blank()
+    d.window.icon = "logo"
+    local dir = assert(Files.writePreview(project, "main", DesignModel.generate(d, "main"), d))
+    local copied = FS.joinPaths(dir, "images" .. sep .. "brand" .. sep .. "logo.png")
+    assert(FS.exists(copied), "logo.png copied, folder kept")
+    assert(not FS.exists(FS.joinPaths(dir, "images" .. sep .. "unused.png")), "only what the design uses")
+    local map = FS.readFile(FS.joinPaths(dir, "scripts" .. sep .. "designed" .. sep .. "images.lua"))
+    assert(map:find('logo = res.Resources.images("brand/logo.png")', 1, true), map)
+    assert(not map:find("unused", 1, true), map)
+
+    -- A design with no images gets no images folder and no map.
+    local plain = FS.joinPaths(project, "plain")
+    FS.createFolder(plain)
+    local d2 = DesignModel.blank()
+    local dir2 = assert(Files.writePreview(plain, "main", DesignModel.generate(d2, "main"), d2))
+    assert(not FS.exists(FS.joinPaths(dir2, "scripts" .. sep .. "designed" .. sep .. "images.lua")))
+end)
+
 print(string.format("\n%d checks, %d failed", count, failures))
 sys.System.exit(failures == 0 and 0 or 1)

@@ -35,15 +35,16 @@
 | F3 | Fixes — Native theming (Limekit) | No pure-black tables/headers in dark mode (qdarktheme `QTableView` rule, palette never applied) | — | Done (2026-10-22) |
 | F4 | Fixes — Native DesignSurface (Limekit) | Hover/click/double-click/right-click land on the design widget, never a Qt internal ("QWidget") | — | Done (2026-10-22) |
 | F5 | Fixes — Native + Lua (both) | Form labels selectable and editable on the canvas | F4 | Done (2026-10-22) |
-| F6 | Fixes — not yet known | A white, blue-edged box the size of the design flashes at the canvas's top-left on save and edits | A repro in real Limer | Partly done — stale-flash bug fixed, `LIMEKIT_DEBUG_PAINT` log added; box itself not reproduced |
-| 2.1 | 2 — Native DesignSurface (Limekit) | Zoom (in/out/reset, correct hit-testing at scale) | — | Not started |
-| 2.2 | 2 — Native DesignSurface (Limekit) | Grid + snap-to-grid | — | Not started |
-| 2.3 | 2 — Native DesignSurface (Limekit) | True multi-select (marquee + shift-click) | — | Not started |
-| 2.4 | 2 — Native DesignSurface (Limekit) | Multi-widget resize/move | 2.3, benefits from 2.2 | Not started |
-| 2.5 | 2 — Native DesignSurface (Limekit) | Smart alignment guide lines while dragging | 2.2 | Not started |
-| 3.1 | 3 — Lua, unlocked by Phase 2 (Limer) | Align/distribute actions (left/right/center/distribute) | 2.3 | Not started |
+| F6 | Fixes — Native DesignSurface (Limekit) | A white, blue-edged box the size of the design flashes at the canvas's top-left on save and edits | — | Done (2026-10-22) |
+| F7 | Fixes — Lua (Limer) | Run fails once a design uses an image: the preview project gets no `designed/images.lua` or `images/` | — | Done (2026-10-22) |
+| 2.1 | 2 — Native DesignSurface (Limekit) | Zoom (in/out/reset, correct hit-testing at scale) | — | Done (2026-10-22) |
+| 2.2 | 2 — Native DesignSurface (Limekit) | Grid + snap-to-grid (a resize snaps; the backdrop dots are the grid) | — | Done (2026-10-22) |
+| 2.3 | 2 — Native DesignSurface (Limekit) | True multi-select (marquee + Ctrl/Shift-click) | — | Done (2026-10-22) |
+| 2.4 | 2 — Native DesignSurface (Limekit) | Multi-widget resize/move | 2.3, benefits from 2.2 | Done (2026-10-22) |
+| 2.5 | 2 — Native DesignSurface (Limekit) | Smart guide lines while resizing (edges and sizes) | 2.2 | Done (2026-10-22) |
+| 3.1 | 3 — Lua, unlocked by Phase 2 (Limer) | Align in slot / match size / distribute evenly | 2.3 | Done (2026-10-22) |
 
-**Build order:** 1.1 → 1.2/1.3 → 1.4a → 1.4b → F1 → F2 → F3 → F4 → F5 → F6 → 2.1 → 2.2 → 2.3 → 2.4 → 2.5 → 3.1
+**Build order:** 1.1 → 1.2/1.3 → 1.4a → 1.4b → F1 → F2 → F3 → F4 → F5 → F6 → F7 → 2.1 → 2.2 → 2.3 → 2.4 → 2.5 → 3.1
 
 The fixes go before Phase 2 on purpose: F4 rewrites how `ui.DesignSurface` decides what is under the mouse, and zoom (2.1), snapping (2.2) and multi-select (2.3) all build on that same hit-testing.
 
@@ -175,7 +176,19 @@ Reported after Phase 1 shipped (2026-10-22), each traced to its cause before bei
 
 **Done when:** a form's labels hover with a proper name, click to select their field, and double-click to rename.
 
-### Task F6: The white box at the canvas's top-left (cause not yet known)
+### Task F6: The white box at the canvas's top-left
+
+**Cause (found 2026-10-22, by another session's trace, then confirmed here):** `setDesignChild` added the new design to the surface's layout, but a widget added to a layout is still hidden -- Qt shows it on a later turn of the event loop -- and a layout skips hidden widgets. So until that turn the design sat at (0, 0). The mock window frame (`paintEvent`) and the selection outline (`_paint_overlay`) are drawn from the design's geometry, so a paint landing in that gap drew the frame at (0, −28): the title bar off the top, a white design-sized body with a blue edge at the top-left. Measured: right after the call the design was at 0,0 and hidden; it settled at 330,224.
+
+**Fixed:** `setDesignChild` shows the new design and activates the layout before returning, so it is in place before anything can paint (`test_a_new_design_is_in_place_before_anything_can_paint` fails without it). Why the harness runs below missed it: they logged the design's first Show and Paint, which come after the layout pass, not paints of the surface inside the gap; real Limer evidently gets one there.
+
+### Task F7: Run fails once a design uses an image (Limer)
+
+**Reported (another session, not yet verified here):** `Files.writePreview` writes a throwaway project for Run, but not the image map (`designed/images.lua`) or the `images/` folder, so a design whose window has an icon -- or any widget an image -- fails to run.
+
+**Proposed:** when writing the preview, copy the images the design uses (`DesignModel.imagesUsed`) and write a matching image map. About 15 lines in `scripts/gui/views/designer/files.lua`.
+
+### Earlier F6 investigation (kept for the record)
 
 **Seen (screenshot, light theme, 2026-10-22):** after a save, a white box with a blue edge, the design's size (640×480), sits at the canvas viewport's top-left, under the design where they overlap.
 
@@ -193,6 +206,16 @@ Reported after Phase 1 shipped (2026-10-22), each traced to its cause before bei
 ---
 
 ## Phase 2 — Native `ui.DesignSurface` foundation (Limekit repo)
+
+**Done 2026-10-22, with Phase 3 and F7.** A design here is laid out, not positioned -- widgets have no x and y -- so each feature means what it can in a layout:
+- 2.1 Zoom — `setZoom/getZoom/zoomIn/zoomOut/resetZoom`, `setOnZoomChange`, Ctrl+wheel. Qt draws a widget at one size only, so at any zoom but 1 the design is laid out at its real size on a stage far off the surface and drawn, scaled, by a proxy that holds its place in the surface's layout. Every mouse position goes through `_to_design` and every frame through `_rect_in`; at zoom 1 they are plain maps and nothing behaves differently. Limer: View > Zoom in (Ctrl+= / Ctrl++), Zoom out (Ctrl+-), Actual size (Ctrl+0); a toolbar −, %, + group.
+- 2.2 Grid — `setGridSize` (16 px), `setSnapToGrid`. Snapping applies to the one thing set in px, a resize; the backdrop's dots are the grid, one step apart at the current zoom and in line with the design's corner. Limer: View > Snap to grid.
+- 2.3 Multi-select — Ctrl/Shift-click adds and removes; a drag from the window or the backdrop draws a marquee taking the outermost widgets it encloses (a row taken whole takes its children with it). `setSelection/getSelection`, `setOnSelectionChange`. Limer keeps a selection of several through edits and undo.
+- 2.4 Several at once — dragging one of several moves them all, side by side into the slot (`DesignModel.moveMany`; in a grid, row after row); a handle pulls every selected widget by the same amount (`setOnResizeSelection`), one undo step; Delete and Lock act on all.
+- 2.5 Guides — while resizing, the pulled edge snaps within 5 screen px to another widget's edge, or to the size that matches another widget's width or height, drawn as a dashed line and named on the size tag. `setGuidesEnabled`. Guides for *moves* would mean nothing in a layout: a move goes into a slot, which the drop indicator already shows.
+- 3.1 — **Align** (Left, Centre, Right, Fill across / Top, Middle, Bottom, Fill down): where a widget sits in its layout slot -- aligned one way it keeps its own size that way, instead of stretching. New engine call `Layout:setChildAlignment(child, ...)`; stored as `halign`/`valign` on the node. **Match size** (same width/height/size as the last selected), from `DesignSurface:getWidgetSize`. **Distribute evenly**: equal stretch across a row's or column's widgets.
+- F7 — `Files.writePreview(project, name, source, design)` copies the images the design names, folders kept, and writes their map. Verified: the old preview failed with `module 'designed.images' not found`, the new one runs.
+- Checks: Limekit -- `tests/widgets/test_designsurface_zoom.py` (20), the whole suite passing; Limer -- model checks 60/60, the Phase 1 smoke run 9/9, the F-fix run 12/12, and a 20-check run of Phase 2 and 3 with real Qt mouse, wheel and key events on the real designer.
 
 Do in this order — each builds on the last. Regenerate Limer's `api_index.lua` after each lands.
 

@@ -110,23 +110,28 @@ local function updateActions()
     -- Deleting takes everything inside with it, so one lock inside stops it.
     local removable = node ~= nil and not isRoot and DesignModel.lockedWithin(node) == nil
     local movable = node ~= nil and not isRoot and not locked
+    -- Wrapping, unwrapping and moving one place work on one widget at a time.
+    local several = #S.selection > 1
     local A = S.actions
     A.undo:setEnabled(S.undo:canUndo())
     A.redo:setEnabled(S.undo:canRedo())
     S.undoButton:setEnabled(S.undo:canUndo())
     S.redoButton:setEnabled(S.undo:canRedo())
-    A.copy:setEnabled(isWidget)
-    A.duplicate:setEnabled(isWidget)
-    A.cut:setEnabled(isWidget and removable)
-    for _, entry in ipairs(A.wraps) do entry:setEnabled(isWidget and not locked) end
+    A.copy:setEnabled(isWidget and not several)
+    A.duplicate:setEnabled(isWidget and not several)
+    A.cut:setEnabled(isWidget and removable and not several)
     A.delete:setEnabled(removable)
     S.deleteButton:setEnabled(removable)
-    S.wrapRowButton:setEnabled(isWidget and not locked)
-    S.wrapColumnButton:setEnabled(isWidget and not locked)
+    S.wrapRowButton:setEnabled(isWidget and not locked and not several)
+    S.wrapColumnButton:setEnabled(isWidget and not locked and not several)
     A.unwrap:setEnabled(DesignModel.isContainer(node) and not isRoot and not locked and #node.children == 1)
     for _, key in ipairs({ "moveUp", "moveDown", "moveFirst", "moveLast" }) do
         A[key]:setEnabled(movable)
     end
+    for _, entry in ipairs(A.aligns) do entry:setEnabled(isWidget or several) end
+    for _, entry in ipairs(A.sizes) do entry:setEnabled(several) end
+    A.distribute:setEnabled(several)
+    for _, entry in ipairs(A.wraps) do entry:setEnabled(isWidget and not locked and not several) end
     A.lock:setEnabled(node ~= nil and not isRoot)
     A.lock:setChecked(locked)
     A.addPage:setEnabled(node ~= nil and node.layout == "tab")
@@ -143,7 +148,7 @@ end
 
 local function refreshAll()
     S.canvas:rebuild(S.design)
-    S.canvas:select(S.selected)
+    if #S.selection > 1 then S.canvas:selectMany(S.selection) else S.canvas:select(S.selected) end
     S.surface:setFrameTitle(S.design.window.title)
     S.outline:refresh(S.design)
     S.outline:select(S.selected)
@@ -155,6 +160,7 @@ end
 
 local function select(node)
     S.selected = node
+    S.selection = node and { node } or {}
     S.canvas:select(node)
     S.outline:select(node)
     S.props:show(node, S.canvas:widgetFor(node), S.design)
@@ -162,18 +168,54 @@ local function select(node)
     setStatus(describe(node))
 end
 
---- Applies fn(draft, selectedInDraft) to a snapshot. fn returns
---- ok, reason, selectPath. On ok the draft becomes the design.
+--- Several at once, the last the primary: the one Properties and the
+--- outline show, and the one with resize handles.
+local function selectMany(nodes)
+    if #nodes <= 1 then return select(nodes[1]) end
+    S.selection = nodes
+    S.selected = nodes[#nodes]
+    S.canvas:selectMany(nodes)
+    S.outline:select(S.selected)
+    S.props:show(S.selected, S.canvas:widgetFor(S.selected), S.design)
+    updateActions()
+    setStatus(("%d selected  ·  %s last"):format(#nodes, S.selected.name or S.selected.kind))
+end
+
+-- The selection, found again in another copy of the design by path.
+local function selectionIn(design)
+    local found = {}
+    for _, node in ipairs(S.selection) do
+        local n = nodeAt(design, pathOf(S.design, node))
+        if n then found[#found + 1] = n end
+    end
+    return found
+end
+
+--- Applies fn(draft, selectedInDraft, selectionInDraft) to a snapshot. fn
+--- returns ok, reason, selectPath. On ok the draft becomes the design.
+--- With no selectPath, a selection of several is kept: its nodes are
+--- followed through the change itself, so they stay selected wherever a
+--- move put them.
 local function mutate(fn, status)
     local path = pathOf(S.design, S.selected)
     local draft = DesignModel.snapshot(S.design)
-    local ok, why, selectPath = fn(draft, nodeAt(draft, path))
+    local many = selectionIn(draft)
+    local ok, why, selectPath = fn(draft, nodeAt(draft, path), many)
     if not ok then
         setStatus(why or "no change")
         return false
     end
     S.design = draft
-    S.selected = nodeAt(draft, selectPath or path)
+    local kept = {}
+    for _, n in ipairs(many) do
+        if n == draft.root or DesignModel.parentOf(draft, n) then kept[#kept + 1] = n end
+    end
+    if not selectPath and #kept > 1 then
+        S.selection, S.selected = kept, kept[#kept]
+    else
+        S.selected = nodeAt(draft, selectPath or path)
+        S.selection = S.selected and { S.selected } or {}
+    end
     S.undo:push(draft)
     S.dirty = true
     refreshAll()
@@ -188,8 +230,10 @@ end
 local function restore(design, status)
     if not design then setStatus("nothing to " .. status); return end
     local path = pathOf(S.design, S.selected)
+    local many = selectionIn(design)
     S.design = design
     S.selected = nodeAt(design, path)
+    S.selection = #many > 1 and many or (S.selected and { S.selected } or {})
     S.dirty = true
     refreshAll()
     setStatus(status)
@@ -206,6 +250,16 @@ local function onDrop(drop)
             if not ok then return false, why end
             return true, nil, pathOf(d, node)
         end, "added " .. short(drop.class))
+    elseif drop.nodes then
+        -- Several moving together: into the slot side by side, in design
+        -- order, and still selected afterwards.
+        local paths = {}
+        for i, node in ipairs(drop.nodes) do paths[i] = pathOf(S.design, node) end
+        mutate(function(d)
+            local nodes = {}
+            for i, p in ipairs(paths) do nodes[i] = nodeAt(d, p) end
+            return DesignModel.moveMany(d, nodes, nodeAt(d, targetPath), drop.slot)
+        end, ("moved %d"):format(#paths))
     else
         local nodePath = pathOf(S.design, drop.node)
         mutate(function(d)
@@ -266,13 +320,19 @@ end
 
 local function deleteSelected()
     if not S.selected then setStatus("nothing selected"); return end
-    mutate(function(d, selected)
+    mutate(function(d, selected, many)
         if not selected then return false, "nothing selected" end
         local parent = DesignModel.parentOf(d, selected)
-        local ok, why = DesignModel.remove(d, selected)
+        local ok, why
+        if #many > 1 then
+            ok, why = DesignModel.removeMany(d, many)
+        else
+            ok, why = DesignModel.remove(d, selected)
+        end
         if not ok then return false, why end
+        -- Afterwards: the container the primary one was taken out of.
         return true, nil, pathOf(d, parent)
-    end, "deleted")
+    end, #S.selection > 1 and ("deleted %d"):format(#S.selection) or "deleted")
 end
 
 local function moveSelected(delta)
@@ -343,8 +403,59 @@ local function setLocked(node, locked)
 end
 
 local function toggleLock()
-    local node = S.selected
-    setLocked(node, not (node and node.locked))
+    if #S.selection <= 1 then
+        local node = S.selected
+        return setLocked(node, not (node and node.locked))
+    end
+    -- Several: all locked if any was not, otherwise all unlocked.
+    local lock = false
+    for _, node in ipairs(S.selection) do lock = lock or not node.locked end
+    mutate(function(d, _, many)
+        for _, n in ipairs(many) do
+            local ok, why = DesignModel.setLocked(d, n, lock)
+            if not ok then return false, why end
+        end
+        return true
+    end, ("%s %d"):format(lock and "locked" or "unlocked", #S.selection))
+end
+
+-- ALIGN, MATCH, DISTRIBUTE --------------------------------------------------
+
+local ALIGN_WORDS = {
+    left = "left", hcenter = "centre", right = "right", hfill = "to fill across",
+    top = "top", vcenter = "middle", bottom = "bottom", vfill = "to fill down",
+}
+
+--- Where each selected widget sits in its layout slot (see DesignModel.align).
+local function alignSelected(how)
+    if not S.selected then setStatus("nothing selected"); return end
+    mutate(function(d, primary, many)
+        return DesignModel.align(d, #many > 0 and many or { primary }, how)
+    end, "aligned " .. (ALIGN_WORDS[how] or how))
+end
+
+--- Every selected widget at least as wide, tall, or both, as the primary
+--- one -- the last selected -- is laid out now.
+local function matchSize(axis)
+    if #S.selection < 2 then
+        setStatus("select two or more; the last one selected is the size to match")
+        return
+    end
+    local width, height = S.surface:getWidgetSize(S.canvas:widgetFor(S.selected))
+    mutate(function(_, _, many)
+        for _, n in ipairs(many) do
+            if n.kind then return false, "only widgets have a size" end
+            if n.locked then return false, n.name .. " is locked -- unlock it first" end
+            if axis ~= "height" then n.props.minWidth = width end
+            if axis ~= "width" then n.props.minHeight = height end
+        end
+        return true
+    end, ("matched %s to %s"):format(axis == "both" and "size" or axis, S.selected.name))
+end
+
+--- Equal stretch for every selected widget of one row or column.
+local function distributeSelected()
+    mutate(function(d, _, many) return DesignModel.distribute(d, many) end, "distributed evenly")
 end
 
 local function unwrapSelected()
@@ -507,6 +618,35 @@ function callbacks.onResize(widget, width, height)
         n.props.minWidth, n.props.minHeight = width, height
         return true
     end, node.name .. " min size " .. width .. "x" .. height)
+end
+
+--- A handle dragged with several selected: each pulled by the same amount,
+--- in one step to undo. sizes = { { widget, width, height }, ... }.
+function callbacks.onResizeSelection(sizes)
+    if #sizes == 1 then
+        return callbacks.onResize(sizes[1].widget, sizes[1].width, sizes[1].height)
+    end
+    local changes = {}
+    for _, entry in ipairs(sizes) do
+        local node = not S.canvas:isFormLabel(entry.widget) and S.canvas:nodeFor(entry.widget)
+        if node and not node.kind then
+            if node.locked then
+                refreshAll()
+                setStatus(node.name .. " is locked -- unlock it to resize it")
+                return
+            end
+            changes[#changes + 1] = { path = pathOf(S.design, node), width = entry.width, height = entry.height }
+        end
+    end
+    if #changes == 0 then refreshAll(); return end
+    mutate(function(d)
+        for _, c in ipairs(changes) do
+            local n = nodeAt(d, c.path)
+            if not n then return false, "gone" end
+            n.props.minWidth, n.props.minHeight = c.width, c.height
+        end
+        return true
+    end, ("resized %d"):format(#changes))
 end
 
 -- The property a double-click edits: the first one the widget has.
@@ -754,7 +894,7 @@ local function runPreview()
         return
     end
     local source = DesignModel.generate(S.design, S.name)
-    local path, why = Files.writePreview(project(), S.name, source)
+    local path, why = Files.writePreview(project(), S.name, source, S.design)
     if not path then warn("could not write the preview: " .. tostring(why)); return end
     setStatus("running " .. S.name)
     ProjectRunner.run(path)
@@ -802,6 +942,35 @@ local function wrapMenu(enabled, entries)
     return menu
 end
 
+--- "Align": where the selection sits in its layout slots. Entries go into
+--- `entries`, if given.
+local function alignMenu(enabled, entries)
+    local menu = ui.Menu("Align")
+    local rows = { { "left", "Left" }, { "hcenter", "Centre" }, { "right", "Right" },
+                   { "hfill", "Fill across" }, "-",
+                   { "top", "Top" }, { "vcenter", "Middle" }, { "bottom", "Bottom" },
+                   { "vfill", "Fill down" } }
+    for _, row in ipairs(rows) do
+        if row == "-" then
+            menu:addSeparator()
+        else
+            local entry = item(menu, row[2], function() alignSelected(row[1]) end, enabled)
+            if entries then entries[#entries + 1] = entry end
+        end
+    end
+    return menu
+end
+
+--- "Match size": every selected widget the size of the last selected.
+local function sizeMenu(enabled, entries)
+    local menu = ui.Menu("Match size")
+    for _, row in ipairs({ { "width", "Same width" }, { "height", "Same height" }, { "both", "Same size" } }) do
+        local entry = item(menu, row[2], function() matchSize(row[1]) end, enabled)
+        if entries then entries[#entries + 1] = entry end
+    end
+    return menu
+end
+
 local function buildContextMenu()
     local node = S.selected
     local menu = ui.Menu("")
@@ -812,15 +981,20 @@ local function buildContextMenu()
     local locked = node ~= nil and node.locked == true
     local removable = node ~= nil and not isRoot and DesignModel.lockedWithin(node) == nil
     local movable = node ~= nil and not isRoot and not locked
+    local several = #S.selection > 1
 
-    menu:addMenu(wrapMenu(isWidget and not isRoot and not locked))
+    menu:addMenu(wrapMenu(isWidget and not isRoot and not locked and not several))
     item(menu, "Unwrap", unwrapSelected, isBox and not isRoot and not locked and #node.children == 1)
     item(menu, "Add page", addPage, node ~= nil and node.layout == "tab")
     menu:addSeparator()
-    item(menu, "Cut", cutSelected, isWidget and removable)
-    item(menu, "Copy", copySelected, isWidget and not isRoot)
+    menu:addMenu(alignMenu(isWidget and not isRoot))
+    menu:addMenu(sizeMenu(several))
+    item(menu, "Distribute evenly", distributeSelected, several)
+    menu:addSeparator()
+    item(menu, "Cut", cutSelected, isWidget and removable and not several)
+    item(menu, "Copy", copySelected, isWidget and not isRoot and not several)
     item(menu, "Paste", pasteClipboard)
-    item(menu, "Duplicate", duplicateSelected, isWidget and not isRoot)
+    item(menu, "Duplicate", duplicateSelected, isWidget and not isRoot and not several)
     menu:addSeparator()
     local layouts = ui.Menu("Change layout")
     for _, class in ipairs(DesignModel.LAYOUTS) do
@@ -880,6 +1054,30 @@ end
 local function undo() restore(S.undo:undo(), "undo") end
 local function redo() restore(S.undo:redo(), "redo") end
 
+-- Snapping rounds a resize to the grid the backdrop's dots draw; guides
+-- catch the edge being pulled where it meets another widget's edge, or its
+-- size. The checkable menu entries flip their own check; the surface follows.
+local function toggleSnap()
+    S.snap = not S.snap
+    S.surface:setSnapToGrid(S.snap)
+    S.actions.snap:setChecked(S.snap)
+    setStatus(S.snap and ("resizing snaps to a %d px grid"):format(S.surface:getGridSize()) or "snapping off")
+end
+
+local function toggleGuides()
+    S.guides = not S.guides
+    S.surface:setGuidesEnabled(S.guides)
+    S.actions.guides:setChecked(S.guides)
+    setStatus(S.guides and "guides on" or "guides off")
+end
+
+local function paintZoom(factor)
+    local percent = math.floor(factor * 100 + 0.5)
+    S.zoomButton:setText(percent .. "%")
+    S.zoomButton:setToolTip(percent == 100 and "Actual size  (Ctrl+0)"
+                                            or "Back to actual size  (Ctrl+0)")
+end
+
 local function toggleCode()
     S.codeVisible = not S.codeVisible
     S.code:setVisible(S.codeVisible)
@@ -898,7 +1096,7 @@ end
 -- would remove a widget from the design. Delete is bound to the canvas and
 -- the outline instead (installShortcuts), and only shown here.
 local function buildMenubar()
-    S.actions = { layouts = {}, wraps = {} }
+    S.actions = { layouts = {}, wraps = {}, aligns = {}, sizes = {} }
     local menubar = ui.Menubar()
 
     local function menu(title, entries)
@@ -968,11 +1166,23 @@ local function buildMenubar()
         { "Move to start", function() reorderSelected("first") end, shortcut = "Ctrl+Shift+Up", key = "moveFirst" },
         { "Move to end", function() reorderSelected("last") end, shortcut = "Ctrl+Shift+Down", key = "moveLast" },
         "-",
+        { submenu = alignMenu(nil, S.actions.aligns) },
+        { submenu = sizeMenu(nil, S.actions.sizes) },
+        { "Distribute evenly", distributeSelected, key = "distribute" },
+        "-",
         { "Lock", toggleLock, shortcut = "Ctrl+L", icon = "lock", checkable = true, key = "lock" },
     })
     menu("View", {
         { "Generated code", toggleCode, shortcut = "Ctrl+Shift+C", icon = "code", checkable = true, key = "code" },
+        "-",
+        { "Zoom in", function() S.surface:zoomIn() end, shortcut = "Ctrl+=", icon = "zoom-in" },
+        { "Zoom out", function() S.surface:zoomOut() end, shortcut = "Ctrl+-", icon = "zoom-out" },
+        { "Actual size", function() S.surface:resetZoom() end, shortcut = "Ctrl+0" },
+        "-",
+        { "Snap to grid", toggleSnap, checkable = true, key = "snap" },
+        { "Guides", toggleGuides, checkable = true, key = "guides" },
     })
+    S.actions.guides:setChecked(true)
     return menubar
 end
 
@@ -1002,6 +1212,12 @@ local function buildToolbar()
     S.wrapColumnButton = tool("Column", "column", "Wrap the selection in a new column",
         function() wrapSelected("ui.VLayout") end)
     S.deleteButton = tool("", "delete", "Delete the selection  (Del)", deleteSelected)
+    toolbar:addSeparator()
+    tool("", "zoom-out", "Zoom out  (Ctrl+-, or Ctrl+wheel)", function() S.surface:zoomOut() end)
+    S.zoomButton = ui.ToolbarButton("100%")
+    S.zoomButton:setOnClick(function() S.surface:resetZoom() end)
+    toolbar:addButton(S.zoomButton)
+    tool("", "zoom-in", "Zoom in  (Ctrl+=, or Ctrl+wheel)", function() S.surface:zoomIn() end)
 
     -- Everything after this sits at the right-hand end.
     local spacer = ui.Container()
@@ -1053,6 +1269,8 @@ local function installShortcuts()
         bind(S.scroller, "Delete", "widget", deleteSelected),
         bind(S.tree, "Delete", "widget", deleteSelected),
         bind(S.window, "Ctrl+Shift+Z", "window", redo),
+        -- Ctrl+= is on the menu; where = needs Shift, Ctrl++ is what is typed.
+        bind(S.window, "Ctrl++", "window", function() S.surface:zoomIn() end),
     }
 end
 
@@ -1064,6 +1282,9 @@ function DesignerView.create()
         filling = false,
         pickerNames = {},
         codeVisible = false,
+        selection = {},     -- every selected node; S.selected is the last
+        snap = false,
+        guides = true,
         status = ui.Label(""),
         info = ui.Label(""),
     }
@@ -1092,7 +1313,18 @@ function DesignerView.create()
         local menu = buildContextMenu()
         menu:popupAt(S.surface, x, y)
     end)
-    S.surface:setOnResize(callbacks.onResize)
+    S.surface:setOnResizeSelection(callbacks.onResizeSelection)
+    S.surface:setOnZoomChange(function(factor) paintZoom(factor) end)
+    -- Ctrl/Shift-click and marquees: the surface reports every selected
+    -- widget; the view selects their nodes. A form label stands for its field.
+    S.surface:setOnSelectionChange(function(widgets)
+        local nodes, seen = {}, {}
+        for _, widget in ipairs(widgets) do
+            local node = S.canvas:nodeFor(widget)
+            if node and not seen[node] then seen[node] = true; nodes[#nodes + 1] = node end
+        end
+        selectMany(nodes)
+    end)
     S.surface:setOnDoubleClick(function(widget) callbacks.onDoubleClick(widget) end)
     S.scroller = ui.Scroller()
     S.scroller:setChild(S.surface)
@@ -1244,6 +1476,14 @@ function DesignerView.create()
         duplicateSelected = duplicateSelected,
         toggleCode = toggleCode,
         getStatus = function() return S.status:getText() end,
+        getSelection = function() return S.selection end,
+        selectMany = selectMany,
+        alignSelected = alignSelected,
+        matchSize = matchSize,
+        distributeSelected = distributeSelected,
+        toggleSnap = toggleSnap,
+        toggleGuides = toggleGuides,
+        getSurface = function() return S.surface end,
     }
 end
 
