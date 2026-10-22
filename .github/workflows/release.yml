@@ -82,6 +82,13 @@ jobs:
           set -o pipefail
           python packaging/package_portable.py --limekit limekit-src --zip 2>&1 | tee build.log
 
+      # Each download must be named for its version and system; two builds
+      # with one name would overwrite each other on the release.
+      - name: The download is named for this build
+        run: |
+          version=$(python -c "import json; print(json.load(open('app.json'))['project']['version'])")
+          ls dist/Limer-$version-${{ matrix.label }}.zip dist/Limer-$version-${{ matrix.label }}.tar.gz 2>/dev/null | grep .             || { echo "::error::no dist/Limer-$version-${{ matrix.label }}.* -- found: $(ls dist)"; exit 1; }
+
       - name: Smoke test
         run: |
           set -o pipefail
@@ -133,7 +140,15 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           notes="packaging/release-notes/$TAG.md"
-          if [ -f "$notes" ]; then
+          # Built again for a tag whose draft already exists: replace its
+          # files, and drop any the new build no longer makes.
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            for name in $(gh release view "$TAG" --json assets -q '.assets[].name'); do
+              gh release delete-asset "$TAG" "$name" --yes
+            done
+            gh release upload "$TAG" assets/* --clobber
+            if [ -f "$notes" ]; then gh release edit "$TAG" --notes-file "$notes"; fi
+          elif [ -f "$notes" ]; then
             gh release create "$TAG" assets/* --draft --title "Limer ${TAG#v}" --notes-file "$notes"
           else
             gh release create "$TAG" assets/* --draft --title "Limer ${TAG#v}" --generate-notes

@@ -380,7 +380,9 @@ def package(bundle):
     if os_label() == "linux":
         return Path(shutil.make_archive(str(base), "gztar", root_dir=bundle.parent, base_dir=bundle.name))
     if os_label() == "macos":
-        archive = base.with_suffix(".zip")
+        # Not base.with_suffix(): in "Limer-2.0.1-macos" the "suffix" is
+        # ".1-macos", and both Mac builds came out as Limer-2.0.zip.
+        archive = Path(f"{base}.zip")
         subprocess.run(["ditto", "-c", "-k", "--sequesterRsrc", "--keepParent",
                         str(bundle), str(archive)], check=True)
         return archive
