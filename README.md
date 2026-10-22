@@ -55,9 +55,10 @@ read the [documentation](https://limekit.readthedocs.io/).
 ## 🧭 How Limer is laid out
 
 Limer creates, configures, runs and builds Limekit projects. You write the Lua
-in whatever editor you already use — Limekit ships Lua Language Server stubs,
-so that editor knows the whole API: completion, signatures and doc strings
-included.
+in whatever editor you already use. Limekit ships Lua Language Server stubs
+describing the whole API, in `python/Lib/site-packages/limekit/runtime/lua/stubs`
+inside the Limer folder; pointing your editor's Lua extension at them, for
+completion and signatures, is a manual step for now.
 
 - **Left — Project.** The open project's files. Double-click one and it opens
   in whatever your desktop has registered for it.
@@ -187,13 +188,13 @@ about a minute. The people you give it to install nothing either.
 
 Limer is itself a Limekit app — about ten thousand lines of Lua in `scripts/`.
 Working on it from source is the one place you need Python: install Python
-3.10+ and the Limekit framework from its
+3.12+ and the Limekit framework from its
 [repository](https://github.com/mitosisX/Limekit), then from this folder:
 
 ```console
 python -m limekit .              # run Limer
 python -m limekit tests          # run Limer's checks
-python package_portable.py --zip # assemble the release zip (Windows)
+python packaging/package_portable.py --zip # the release zip (Windows)
 ```
 
 The release is not a PyInstaller freeze. `package_portable.py` downloads a
