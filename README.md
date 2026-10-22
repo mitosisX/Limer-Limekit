@@ -5,7 +5,11 @@
 </p>
 
 <p align="center">
-  <img src="images/showcase/1.png" width="720" alt="Limer">
+  <a href="https://buymeacoffee.com/omegamsiska"><img src="https://img.shields.io/badge/Buy%20me%20a%20coffee-FFDD00?logo=buymeacoffee&logoColor=black" alt="Buy me a coffee"></a>
+</p>
+
+<p align="center">
+  <img src="images/screenshots/designer.png" width="820" alt="Limer's Designer: a login form on the canvas, the widget palette on the left, the outline and properties on the right">
 </p>
 
 **Limer** is the app you use to make [Limekit](https://github.com/mitosisX/Limekit)
@@ -26,6 +30,10 @@ wizard.
 ## 🚀 Your first app
 
 Click **New Project**, give it a name, and press **Run**. You have a window.
+
+<p align="center">
+  <img src="images/screenshots/new-project.png" width="440" alt="The New Project dialog">
+</p>
 
 Open `scripts/main.lua` in your editor and replace it with:
 
@@ -52,7 +60,15 @@ For more, open any of the forty-plus
 notepad, kanban board, spreadsheet, minesweeper, SQLite browser, charts — and
 read the [documentation](https://limekit.readthedocs.io/).
 
+<p align="center">
+  <img src="images/screenshots/app-kanban.png" width="620" alt="The Kanban example: four columns of cards, built with Limekit">
+</p>
+
 ## 🧭 How Limer is laid out
+
+<p align="center">
+  <img src="images/screenshots/project.png" width="820" alt="Limer with a project open: files on the left, the project in the centre, your projects on the right, the console below">
+</p>
 
 Limer creates, configures, runs and builds Limekit projects. You write the Lua
 in whatever editor you already use. Limekit ships Lua Language Server stubs
@@ -75,12 +91,20 @@ completion and signatures, is a manual step for now.
 - **Ctrl+K — the Limekit API.** Search every class, method, property and event;
   Enter copies the call.
 
+<p align="center">
+  <img src="images/screenshots/api-palette.png" width="520" alt="Ctrl+K: the Limekit API, searched for onClick">
+</p>
+
 ## 🔍 The Inspector
 
 Run your project and open the Inspector. You see your app's widget tree as it
 is *right now* — click any widget to read and change its properties while the
 app keeps running, or type Lua and run it inside the app. Your app never opens
 that door on its own: Limer has to start it with the Inspector switched on.
+
+<p align="center">
+  <img src="images/screenshots/inspector.png" width="820" alt="The Inspector: a running app's widget tree, with a LineEdit selected and its live properties">
+</p>
 
 ## 🎨 The Designer
 
@@ -123,6 +147,10 @@ either widget on the canvas opens its editor too, and the cells generate as
 would be generated under the canvas, kept current. Ctrl+Z undoes. Delete
 deletes when the canvas or the outline has focus, and only then, so it never
 takes a widget out of the design while you are in the Properties table.
+
+<p align="center">
+  <img src="images/screenshots/designer-code.png" width="820" alt="The Designer with Code open: the Lua the design generates, under the canvas">
+</p>
 
 **Run** (Ctrl+R) shows the design as a real window: a throwaway project is
 written under `design/.preview/` and started through the ordinary project
@@ -178,9 +206,22 @@ button switches the theme, in Limer and the designer alike.
 ## 📦 Building your app
 
 **Build** on the toolbar packages your project as a standalone app for the
-system you are on, ready to hand to someone who has never heard of Limekit.
-On Windows that is a single `.exe` -- about 45 MB for a small app, built in
-about a minute. The people you give it to install nothing either.
+system you are on, ready to hand to someone who has never heard of Limekit:
+a folder holding the `.exe`, or one single `.exe` if you tick **Pack into a
+single file** -- about 45 MB for a small app, built in about a minute. The
+people you give it to install nothing either. Tick **Show a console window**
+while testing, to see `print()` output and errors beside the app.
+
+<p align="center">
+  <img src="images/screenshots/build.png" width="440" alt="The Build dialog">
+</p>
+
+## ☕ Support
+
+Limer and Limekit are free, and made by one person. If they are useful to you,
+you can [buy me a coffee](https://buymeacoffee.com/omegamsiska).
+
+<a href="https://buymeacoffee.com/omegamsiska"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" width="180" alt="Buy me a coffee"></a>
 
 ---
 

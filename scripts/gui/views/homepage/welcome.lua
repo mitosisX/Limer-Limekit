@@ -23,7 +23,7 @@ function WelcomeView.create()
     welcomeGif:setSize(120, 120)
     layout:addChild(welcomeGif)
 
-    local title = ui.Label('<strong>Limer</strong> -')
+    local title = ui.Label('<strong>Limer</strong>')
     title:setTextSize(32)
     layout:addChild(title)
 
