@@ -4,6 +4,7 @@
 local ui  = require("limekit.ui")
 local fs  = require("limekit.fs")
 local res = require("limekit.res")
+local sys = require("limekit.sys")
 
 local json = require "json"
 local Paths = require "app.core.config.paths"
@@ -123,6 +124,17 @@ function ProjectManager.loadProject(projectFile)
         Images.refresh(fileFolderLocation)
     end)
     Images.refresh(fileFolderLocation)
+
+    -- .luarc.json, so VS Code's Lua extension (or any editor running
+    -- lua-language-server) completes Limekit's API in this project. On
+    -- every open, not only on creation: the stubs live inside Limer's own
+    -- folder, and a Limer unzipped somewhere new must repoint the file.
+    if config.api == "2.0" then
+        local ok, why = pcall(sys.EditorSetup.write, fileFolderLocation)
+        if not ok then
+            App.console.error("could not set up editor completion: " .. tostring(why))
+        end
+    end
 
     App.toolbar.enableProjectActions()
 
