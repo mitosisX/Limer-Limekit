@@ -9,7 +9,9 @@
 -- there was no name to reach for even if the code had run.
 --
 -- So the tree comes first here and the code box second. You pick the widget;
--- the path is how it is addressed, and Lua's scoping stops mattering.
+-- its path is how it is addressed, and Lua's scoping stops mattering. The
+-- path ("1.2.3") is the Inspector's own bookkeeping, not something to read,
+-- so it rides along in a hidden second column.
 
 local ui  = require("limekit.ui")
 
@@ -76,8 +78,7 @@ local function showProperties(payload)
     self.props:setColumnWidth(2, 220)
     self.filling = false
 
-    setStatus(string.format("%s   %s   %d properties",
-        payload["class"], payload.path, #rows))
+    setStatus(string.format("%s   %d properties", payload["class"], #rows))
 end
 
 local function onCellChanged(_, row, column)
@@ -147,7 +148,7 @@ local function onWidgetPicked(_, item)
     self.selectedPath = path
     Inspector.ask("props", { path = path }, function(ok, result)
         if not ok then
-            setStatus("could not read " .. path .. ": " .. tostring(result))
+            setStatus("could not read that widget: " .. tostring(result))
             return
         end
         showProperties(result)
@@ -197,7 +198,7 @@ function InspectorView.create()
 
     self.tree:setColumnCount(2)
     self.tree:setHeaderLabels({ 'widget', 'path' })
-    self.tree:setColumnWidth(1, 260)
+    self.tree:setColumnHidden(2, true)
     self.tree:setOnItemClick(onWidgetPicked)
 
     self.props:setColumnCount(3)
